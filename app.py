@@ -250,6 +250,7 @@ class Progress(mongoengine.Document):
     level = mongoengine.IntField(default=1)
     experience_points = mongoengine.IntField(default=0)
     lessons_completed = mongoengine.IntField(default=0)
+    completed_lesson_ids = mongoengine.ListField(mongoengine.StringField(), default=list)
     quizzes_passed = mongoengine.IntField(default=0)
     streak_count = mongoengine.IntField(default=0)
     max_streak = mongoengine.IntField(default=0)
@@ -1721,15 +1722,26 @@ def complete_lesson():
     if not progress:
         progress = Progress(user_id=current_user.id)
     
-    progress.lessons_completed += 1
-    progress.experience_points += 50
+    # Check if already completed
+    is_new = False
+    if lesson_id not in progress.completed_lesson_ids:
+        progress.completed_lesson_ids.append(lesson_id)
+        progress.lessons_completed += 1
+        progress.experience_points += 50
+        is_new = True
+    
     progress.last_updated = datetime.utcnow()
     progress.save()
     
-    # Update Gamification
+    # Update Gamification (Daily Activity)
     update_user_activity(current_user.id)
     
-    return jsonify({'success': True, 'new_xp': progress.experience_points})
+    return jsonify({
+        'success': True, 
+        'new_xp': progress.experience_points,
+        'is_new': is_new,
+        'completed': len(progress.completed_lesson_ids)
+    })
 
 @app.route('/sign-lab')
 @login_required
@@ -1790,9 +1802,14 @@ def classroom_page(course_id):
             'lessons': module_lessons
         })
             
+    # Get User Progress
+    progress = Progress.objects(user_id=current_user.id).first()
+    completed_ids = progress.completed_lesson_ids if progress else []
+
     return render_template('classroom.html', 
                          curriculum=curriculum, 
-                         current_course=current_course)
+                         current_course=current_course,
+                         completed_ids=completed_ids)
 
 # Legacy redirect for compatibility
 @app.route('/lessons')

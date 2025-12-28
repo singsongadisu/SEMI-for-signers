@@ -118,10 +118,19 @@
                     <div style="font-weight: 600; font-size: 0.95rem;">{{ item.module.name }}</div>
                 </div>
                 {% for lesson in item.lessons %}
-                <div class="sidebar-lesson" data-lesson='{{ lesson|tojson|safe }}'
+                {% set is_complete = lesson.id in completed_ids %}
+                <div class="sidebar-lesson {{ 'completed' if is_complete else '' }}"
+                    data-lesson='{{ lesson|tojson|safe }}'
                     onclick='startLesson(JSON.parse(this.getAttribute("data-lesson")))'>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>{{ lesson.title }}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            {% if is_complete %}
+                            <i class="fas fa-check-circle" style="color: var(--accent-primary);"></i>
+                            {% else %}
+                            <i class="far fa-circle" style="opacity: 0.3;"></i>
+                            {% endif %}
+                            {{ lesson.title }}
+                        </span>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">{{ lesson.duration }}m</span>
                     </div>
                 </div>
@@ -146,14 +155,23 @@
             <div class="lesson-grid-premium">
                 {% for item in curriculum %}
                 {% for lesson in item.lessons %}
-                <div class="glass-card lesson-premium-card">
+                {% set is_complete = lesson.id in completed_ids %}
+                <div class="glass-card lesson-premium-card" style="position: relative; overflow: hidden;">
+                    {% if is_complete %}
+                    <div
+                        style="position: absolute; top: 0; right: 0; background: var(--accent-primary); color: #000; padding: 4px 12px; font-size: 0.75rem; font-weight: bold; border-bottom-left-radius: 12px;">
+                        COMPLETED
+                    </div>
+                    {% endif %}
                     <h3 style="margin-top: 5px;">{{ lesson.title }}</h3>
                     <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 10px;">{{ lesson.description }}
                     </p>
-                    <button class="btn btn-primary btn-small" data-lesson='{{ lesson|tojson|safe }}'
+                    <button class="btn {{ 'btn-outline' if is_complete else 'btn-primary' }} btn-small"
+                        data-lesson='{{ lesson|tojson|safe }}'
                         onclick='startLesson(JSON.parse(this.getAttribute("data-lesson")))'
                         style="margin-top: 25px; width: 100%;">
-                        <i class="fas fa-play" style="margin-right: 8px;"></i> Enter Classroom
+                        <i class="fas fa-play" style="margin-right: 8px;"></i> {{ 'Review Lesson' if is_complete else
+                        'Start Lesson' }}
                     </button>
                 </div>
                 {% endfor %}
@@ -245,10 +263,17 @@
         if (step.content_type === 'youtube' || step.content_url.includes('youtube.com') || step.content_url.includes('youtu.be')) {
             const embedUrl = getYouTubeEmbedUrl(step.content_url);
             visual.innerHTML = `<iframe src="${embedUrl}" class="pdf-viewer" allowfullscreen style="background: #000;"></iframe>`;
+        } else if (/\.(mp4|webm|mov)$/i.test(step.content_url)) {
+            // Standard Video support
+            visual.innerHTML = `
+                <video controls autoplay class="pdf-viewer" style="background: #000; object-fit: contain;">
+                    <source src="${step.content_url}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>`;
         } else if (step.content_type === 'pdf') {
             visual.innerHTML = `<iframe src="${step.content_url}" class="pdf-viewer"></iframe>`;
         } else if (step.content_type === 'reading') {
-            visual.innerHTML = `<div class="reading-content" style="text-align: left; padding: 40px;">${step.description}</div>`;
+            visual.innerHTML = `<div class="reading-content" style="text-align: left; padding: 40px; height: 100%; overflow-y: auto;">${step.description}</div>`;
         } else {
             visual.innerHTML = `<div style="text-align: center; padding: 60px;"><h3 style="color: var(--accent-primary)">Academic Content</h3><p>${step.title}</p></div>`;
         }
