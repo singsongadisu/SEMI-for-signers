@@ -789,6 +789,17 @@ def home():
         return redirect(url_for('dashboard'))
     return render_template('home.html')
 
+# PWA Routes
+@app.route('/offline')
+def offline():
+    """Offline fallback page for PWA"""
+    return render_template('offline.html')
+
+@app.route('/ping', methods=['HEAD', 'GET'])
+def ping():
+    """Health check endpoint for PWA connection testing"""
+    return '', 200
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
