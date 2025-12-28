@@ -74,7 +74,7 @@ class AIChat {
             if (data.success) {
                 this.addBotMessage(data.reply);
             } else {
-                this.addBotMessage("I'm having trouble connecting to my brain right now. Try again later! 🧠");
+                this.addBotMessage(data.message || "I'm having trouble connecting to my brain right now. Try again later! 🧠");
             }
 
         } catch (error) {

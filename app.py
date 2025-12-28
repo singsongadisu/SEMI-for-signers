@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import mongoengine
 from werkzeug.security import generate_password_hash, check_password_hash
+import re
 import os
 import json
 from datetime import datetime, timedelta
@@ -2453,63 +2454,117 @@ def delete_quiz_question(qid):
         return jsonify({'success': False, 'message': str(e)})
 
 # --- SEMI AI Assistant API ---
+from openai import OpenAI
+
+# Configure AI (AI/ML API)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+# --- SEMI AI Assistant API ---
 @app.route('/api/chat', methods=['POST'])
-@login_required # Optional: Remove if you want guest chat
 def chat_api():
     try:
         data = request.get_json()
-        user_message = data.get('message', '').lower().strip()
+        user_message = data.get('message', '').strip()
         
         if not user_message:
             return jsonify({'success': False, 'message': 'Empty message'})
 
-        # 1. Context Gathering (Know the User)
+        # 1. Context Gathering
         user_context = {
-            'name': current_user.first_name,
+            'name': 'Guest',
             'streak': 0,
             'level': 1,
             'xp': 0
         }
         
-        progress = Progress.objects(user_id=current_user.id).first()
+        progress = None
+        if current_user.is_authenticated:
+            user_context['name'] = getattr(current_user, 'first_name', 'Student') or 'Student'
+            progress = Progress.objects(user_id=current_user.id).first()
         if progress:
             user_context['streak'] = progress.streak_count
             user_context['level'] = progress.level
             user_context['xp'] = progress.experience_points
 
-        # 2. Rule-Based "AI" Logic (Placeholder for LLM)
-        response = ""
-        
-        # Greetings
-        if any(w in user_message for w in ['hi', 'hello', 'hey', 'greetings']):
-            response = f"Hello {user_context['name']}! 👋 How can I help you master ASL today?"
-        
-        # Progress / Stats
-        elif 'streak' in user_message:
-            response = f"You are currently on a **{user_context['streak']}-day streak**! Keep it up! 🔥"
-        elif 'level' in user_message or 'xp' in user_message:
-            response = f"You are at **Level {user_context['level']}** with **{user_context['xp']} XP**. Great job!"
-        
-        # Feature Help
-        elif 'translate' in user_message:
-            response = "You can use the **Translator** page to convert text into ASL animations. It supports English and Amharic! try saying 'Welcome' there."
-        elif 'quiz' in user_message:
-            response = "Test your knowledge in the **Skill Arena**! We have quizzes for beginners to advanced signers."
-        elif 'learning' in user_message or 'course' in user_message:
-            response = "Check out the **Courses** section. I recommend starting with 'Basic ASL' if you are new."
-        
-        # Technical
-        elif 'bug' in user_message or 'issue' in user_message:
-            response = "I'm sorry to hear that. Please submit a report via the **Feedback** page in your profile menu."
-            
-        # Default Fallback
-        else:
-            response = "That's an interesting question! I'm currently trained on SEMI's platform features and basic ASL guidance. Try asking me about *courses*, *translator*, or *your progress*."
+        # 2. GENERATIVE AI MODE (GPT-4o via AI/ML API)
+        if GEMINI_API_KEY:
+            try:
+                client = OpenAI(
+                    api_key=GEMINI_API_KEY,
+                    base_url="https://api.aimlapi.com/v1"
+                )
 
-        # 3. Simulate AI "Typing" delay in frontend, return response
+                # The STRONG System Prompt
+                system_instruction = f"""
+                You are the "SEMI Assistant", an expert American Sign Language (ASL) tutor and companion for the SEMI platform.
+                Your mission is to bridge the gap between Hearing and Deaf communities by helping students learn ASL effectively.
+
+                **Your Persona:**
+                - You are warm, encouraging, and enthusiastic. 🌟
+                - You use emojis (👋, 🤟, ✨) naturally to convey tone, as facial expression is key in ASL.
+                - You are concise. Chat bubbles are small, so keep answers under 3-4 sentences unless explaining a concept.
+                
+                **Your User Context:**
+                - User Name: {user_context['name']}
+                - Current Streak: {user_context['streak']} days (Celebrate this if > 3!)
+                - Skill Level: {user_context['level']} (Adjust your complexity accordingly)
+
+                **Platform Knowledge (Use this to guide users):**
+                - "Translator": Converts English text/audio into 3D sign animations. Great for quick vocab.
+                - "Sign Lab": Uses the webcam and AI to verify the user's hand signs in real-time.
+                - "Courses": Structured Curriculum (Beginner to Advanced). Recommended for serious learning.
+                - "Skill Arena": Quizzes and gamification to test memory.
+
+                **Guidance Rules:**
+                1. **Deaf Culture**: Always emphasize respect. Explain that ASL has its own grammar (Topic-Comment), it is NOT just signed English.
+                2. **Emotional Support**: If a user mentions a deaf friend/family member, validate their motivation. It's a beautiful reason to learn.
+                3. **Translation**: You cannot show video yourself. If asked to translate "Hello", describe the sign ("Place hand on forehead, move away...") AND tell them to use the **Translator** page for a visual demo.
+                4. **Troubleshooting**: If they report a bug, apologize and direct them to the Feedback form.
+                """
+
+                # Call Chat Completion
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": user_message}
+                    ],
+                    temperature=0.7,
+                    max_tokens=256,
+                    timeout=15.0
+                )
+                
+                reply = response.choices[0].message.content
+                reply = reply.replace('**', '') 
+                
+                return jsonify({'success': True, 'reply': reply})
+
+            except Exception as ai_error:
+                # Log error to file for debugging
+                with open('chat_errors.log', 'a') as f:
+                    f.write(f"[{datetime.utcnow()}] AI Error: {str(ai_error)}\n")
+                print(f"AI/ML API Error: {ai_error}")
+                # Fallback to rules if AI fails
+                pass
+
+        # 3. FALBACK: Rule-Based Logic (If no key or error)
+        # Helper for word boundary matching
+        def has_word(text, words):
+            return any(re.search(r'\b' + re.escape(w) + r'\b', text.lower()) for w in words)
+
+        response = ""
+        user_message_lower = user_message.lower()
+
+        # [EXISTING RULE LOGIC HERE]
+        if has_word(user_message_lower, ['hi', 'hello', 'hey', 'greetings', 'sup']):
+            response = f"Hello {user_context['name']}! 👋 I'm ready to help you learn ASL. (Add a Gemini API Key to make me smarter!)"
+        elif has_word(user_message_lower, ['deaf', 'hearing', 'friend', 'family']):
+            response = "That's wonderful! SEMI is designed exactly for that. I'd recommend starting with our **Basic ASL** course together."
+        else:
+            response = "I see! Since I'm currently in 'Offline Mode' (No API Key), I can only answer basic questions. Please add a Gemini API Key to .env to unlock my full brain! 🧠"
+
         import time
         time.sleep(0.5) 
-        
         return jsonify({'success': True, 'reply': response})
 
     except Exception as e:
