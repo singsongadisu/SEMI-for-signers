@@ -2420,6 +2420,70 @@ def delete_quiz_question(qid):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+# --- SEMI AI Assistant API ---
+@app.route('/api/chat', methods=['POST'])
+@login_required # Optional: Remove if you want guest chat
+def chat_api():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '').lower().strip()
+        
+        if not user_message:
+            return jsonify({'success': False, 'message': 'Empty message'})
+
+        # 1. Context Gathering (Know the User)
+        user_context = {
+            'name': current_user.first_name,
+            'streak': 0,
+            'level': 1,
+            'xp': 0
+        }
+        
+        progress = Progress.objects(user_id=current_user.id).first()
+        if progress:
+            user_context['streak'] = progress.streak_count
+            user_context['level'] = progress.level
+            user_context['xp'] = progress.experience_points
+
+        # 2. Rule-Based "AI" Logic (Placeholder for LLM)
+        response = ""
+        
+        # Greetings
+        if any(w in user_message for w in ['hi', 'hello', 'hey', 'greetings']):
+            response = f"Hello {user_context['name']}! 👋 How can I help you master ASL today?"
+        
+        # Progress / Stats
+        elif 'streak' in user_message:
+            response = f"You are currently on a **{user_context['streak']}-day streak**! Keep it up! 🔥"
+        elif 'level' in user_message or 'xp' in user_message:
+            response = f"You are at **Level {user_context['level']}** with **{user_context['xp']} XP**. Great job!"
+        
+        # Feature Help
+        elif 'translate' in user_message:
+            response = "You can use the **Translator** page to convert text into ASL animations. It supports English and Amharic! try saying 'Welcome' there."
+        elif 'quiz' in user_message:
+            response = "Test your knowledge in the **Skill Arena**! We have quizzes for beginners to advanced signers."
+        elif 'learning' in user_message or 'course' in user_message:
+            response = "Check out the **Courses** section. I recommend starting with 'Basic ASL' if you are new."
+        
+        # Technical
+        elif 'bug' in user_message or 'issue' in user_message:
+            response = "I'm sorry to hear that. Please submit a report via the **Feedback** page in your profile menu."
+            
+        # Default Fallback
+        else:
+            response = "That's an interesting question! I'm currently trained on SEMI's platform features and basic ASL guidance. Try asking me about *courses*, *translator*, or *your progress*."
+
+        # 3. Simulate AI "Typing" delay in frontend, return response
+        import time
+        time.sleep(0.5) 
+        
+        return jsonify({'success': True, 'reply': response})
+
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        return jsonify({'success': False, 'message': 'AI currently offline'})
+
 
 # Error handlers
 @app.errorhandler(404)

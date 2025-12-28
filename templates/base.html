@@ -60,6 +60,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='pwa-styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='mobile-fixes.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -252,6 +253,44 @@
     <!-- Custom Notifier -->
     <div id="notifierContainer" class="notifier-container"></div>
 
+    <!-- AI Chat Widget -->
+    <button id="chatTrigger" class="chat-widget-trigger">
+        <i class="fas fa-robot"></i>
+    </button>
+
+    <div id="chatWindow" class="chat-window">
+        <div class="chat-header">
+            <div class="bot-info">
+                <div class="bot-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="bot-details">
+                    <h4>SEMI Assistant</h4>
+                    <span class="status"><span class="status-dot"></span>Online</span>
+                </div>
+            </div>
+            <button id="closeChat" class="close-chat">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div id="chatMessages" class="chat-messages">
+            <!-- Messages will appear here -->
+            <div id="typingIndicator" class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Ask me about Sign Language...">
+            <button id="sendMessage" class="send-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Custom confirm modal -->
     <div id="confirmModal" class="modal-overlay">
         <div class="glass-card modal-card">
@@ -355,6 +394,8 @@
 
     <!-- PWA Manager -->
     <script src="{{ url_for('static', filename='pwa.js') }}"></script>
+    <!-- Chat Logic -->
+    <script src="{{ url_for('static', filename='chat.js') }}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>
