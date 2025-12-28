@@ -59,6 +59,7 @@
     <!-- Main Stylesheet -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='pwa-styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='mobile-fixes.css') }}">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -78,6 +79,11 @@
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SEMI Logo" class="brand-logo">
                 <span class="brand-name">SEMI</span>
             </a>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="nav-toggle" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
 
             <div class="nav-links">
                 {% block nav_links %}
@@ -264,6 +270,24 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
+        // Mobile Menu Toggle
+        const mobileBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.querySelector('.nav-links');
+
+        if (mobileBtn) {
+            mobileBtn.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+                const icon = mobileBtn.querySelector('i');
+                if (navLinks.classList.contains('active')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+        }
+
         // Professional Notification System
         function showNotifier(message, type = 'info') {
             const container = document.getElementById('notifierContainer');
