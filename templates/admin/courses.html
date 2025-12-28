@@ -450,15 +450,24 @@
             <input type="hidden" id="drawerTargetChapterId">
             <div class="form-group" style="margin-bottom: 20px;">
                 <label class="form-label">Lesson Title</label>
-                <input type="text" id="drawerLessonTitle" class="form-input" required>
+                <input type="text" id="drawerLessonTitle" class="form-input" required
+                    placeholder="e.g. Intro to Greetings">
             </div>
             <div class="form-group" style="margin-bottom: 20px;">
-                <label class="form-label">Description</label>
-                <textarea id="drawerLessonDesc" class="form-input" rows="2"></textarea>
+                <label class="form-label">Video Content</label>
+                <input type="text" id="drawerLessonContent" class="form-input"
+                    placeholder="YouTube URL (e.g. https://youtu.be/...)">
+                <small style="color: var(--text-muted); display: block; margin-top: 5px;">Paste a YouTube link here to
+                    auto-create the lesson video.</small>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Transcript / Notes</label>
+                <textarea id="drawerLessonDesc" class="form-input" rows="3"
+                    placeholder="Description or transcript..."></textarea>
             </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('drawerLessonModal')" class="btn btn-outline">Cancel</button>
-                <button type="submit" class="btn btn-primary">Add Lesson</button>
+                <button type="submit" class="btn btn-primary">Add Lesson & Content</button>
             </div>
         </form>
     </div>
@@ -632,7 +641,8 @@
             body: JSON.stringify({
                 title: document.getElementById('drawerLessonTitle').value,
                 description: document.getElementById('drawerLessonDesc').value,
-                category_id: document.getElementById('drawerTargetChapterId').value
+                category_id: document.getElementById('drawerTargetChapterId').value,
+                content_url: document.getElementById('drawerLessonContent').value
             })
         });
         if ((await res.json()).success) {

@@ -1962,7 +1962,22 @@ def add_lesson():
         order=Lesson.objects(category_id=data.get('category_id')).count() + 1
     )
     lesson.save()
-    return jsonify({'success': True, 'message': 'Lesson added successfully'})
+
+    # Auto-create content step if URL provided
+    content_url = data.get('content_url')
+    if content_url:
+        content_type = 'youtube' if 'youtu' in content_url else 'video'
+        step = LessonStep(
+            lesson_id=str(lesson.id),
+            title=f"Lesson Video: {lesson.title}",
+            description="Main lesson content",
+            content_type=content_type,
+            content_url=content_url,
+            order=1
+        )
+        step.save()
+
+    return jsonify({'success': True, 'message': 'Lesson and content added successfully'})
 
 @app.route('/admin/edit_lesson/<lesson_id>', methods=['POST'])
 @login_required
