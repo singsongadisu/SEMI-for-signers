@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account • SEMI{% endblock %}
+
+{% block body_class %}auth-background{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="glass-card auth-card" data-aos="fade-up">
+        <div class="auth-header">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SEMI Logo"
+                style="height: 110px; width: auto; margin-bottom: 32px; filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.8));">
+            <h1>Join SEMI</h1>
+            <p style="color: var(--text-muted);">Start your learning journey today</p>
+        </div>
+
+        <form id="registerForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <input type="text" id="first_name" class="form-input" placeholder="John" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <input type="text" id="last_name" class="form-input" placeholder="Doe" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" id="email" class="form-input" placeholder="name@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+                    <div id="passwordStrength" class="strength-meter">
+                        <div class="strength-bar"></div>
+                    </div>
+                </div>
+                <ul id="passwordRequirements" class="password-reqs">
+                    <li data-requirement="length">8+ characters</li>
+                    <li data-requirement="upper">A-Z uppercase</li>
+                    <li data-requirement="number">0-9 number</li>
+                    <li data-requirement="special">Special char (@$!%*?)</li>
+                </ul>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <input type="password" id="confirm_password" class="form-input" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">
+                Create Account <i class="fas fa-user-plus"></i>
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 32px; color: var(--text-muted); font-size: 0.95rem;">
+            Already have an account? <a href="{{ url_for('login') }}"
+                style="color: var(--accent-primary); text-decoration: none; font-weight: 600;">Sign in instead</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .strength-meter {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 2px;
+        margin-top: 10px;
+        overflow: hidden;
+    }
+
+    .strength-bar {
+        height: 100%;
+        width: 0;
+        transition: all 0.3s ease;
+    }
+
+    .password-reqs {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0 0 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .password-reqs li {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .password-reqs li::before {
+        content: '\f10c';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 400;
+    }
+
+    .password-reqs li.met {
+        color: #10b981;
+    }
+
+    .password-reqs li.met::before {
+        content: '\f058';
+        font-weight: 900;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirm_password');
+    const strengthBar = document.querySelector('.strength-bar');
+    const requirements = {
+        length: val => val.length >= 8,
+        upper: val => /[A-Z]/.test(val),
+        number: val => /[0-9]/.test(val),
+        special: val => /[@$!%*?&]/.test(val)
+    };
+
+    passwordInput.addEventListener('input', () => {
+        const val = passwordInput.value;
+        let score = 0;
+
+        Object.keys(requirements).forEach(req => {
+            const isMet = requirements[req](val);
+            const li = document.querySelector(`li[data-requirement="${req}"]`);
+            if (isMet) {
+                li.classList.add('met');
+                score++;
+            } else {
+                li.classList.remove('met');
+            }
+        });
+
+        const pct = (score / 4) * 100;
+        strengthBar.style.width = `${pct}%`;
+        strengthBar.style.background = score <= 1 ? '#ef4444' : score <= 3 ? '#f59e0b' : '#10b981';
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector('button');
+        const originalText = submitBtn.innerHTML;
+
+        const password = passwordInput.value.trim();
+        const confirm = confirmInput.value.trim();
+
+        // Validation package
+        let errors = [];
+        if (password.length < 8) errors.push('Password must be 8+ characters');
+        if (!/[A-Z]/.test(password)) errors.push('Need one uppercase letter');
+        if (!/[0-9]/.test(password)) errors.push('Need one number');
+        if (!/[@$!%*?&]/.test(password)) errors.push('Need one special character');
+        if (password !== confirm) errors.push('Passwords do not match');
+
+        if (errors.length > 0) {
+            showNotifier(errors[0], 'error');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Initializing Account...';
+
+        const formData = {
+            first_name: document.getElementById('first_name').value,
+            last_name: document.getElementById('last_name').value,
+            email: document.getElementById('email').value,
+            password: password,
+            confirm_password: confirm
+        };
+
+        try {
+            const response = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showNotifier('Identity verified! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/login';
+                }, 1500);
+            } else {
+                showNotifier(data.message || 'Registration failed', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotifier('Neural link failed. Try again.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+</script>
+{% endblock %}

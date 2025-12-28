@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found • SEMI{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 160px 0 100px; text-align: center;">
+    <div class="glass-card" style="max-width: 600px; margin: 0 auto; padding: 60px;">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="404"
+            style="height: 180px; width: auto; margin-bottom: 40px; opacity: 1; filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.9));">
+        <h1 style="font-size: 4rem; margin-bottom: 16px;">404</h1>
+        <h2 style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 40px;">The sign you're looking for was
+            not found.</h2>
+        <div style="display: flex; gap: 16px; justify-content: center;">
+            <a href="{{ url_for('home') }}" class="btn btn-primary">Return Home</a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

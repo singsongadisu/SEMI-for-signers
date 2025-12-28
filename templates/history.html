@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}My History • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-container {
+        max-width: 1000px;
+        margin: 60px auto;
+    }
+
+    .history-tabs {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 40px;
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 12px;
+    }
+
+    .history-tab {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 8px 16px;
+        position: relative;
+        transition: 0.3s;
+    }
+
+    .history-tab.active {
+        color: var(--accent-primary);
+    }
+
+    .history-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -13px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--accent-primary);
+        box-shadow: 0 0 10px var(--accent-primary);
+    }
+
+    .history-item-premium {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px;
+        margin-bottom: 16px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        transition: var(--transition-smooth);
+    }
+
+    .history-item-premium:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent-primary);
+        transform: translateX(10px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container history-container">
+    <div class="section-header">
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px;">
+            <h1 style="font-size: 3rem; margin: 0;">Translation History</h1>
+            <span class="badge-vibrant" style="margin: 0;">My Logbook</span>
+        </div>
+        <p style="color: var(--text-muted);">A comprehensive record of your ASL translations and learning milestones.
+        </p>
+    </div>
+
+    <div class="history-tabs">
+        <button class="history-tab active">All Entries</button>
+        <button class="history-tab">Favorites</button>
+        <button class="history-tab">Recent</button>
+    </div>
+
+    <div id="historyList">
+        {% if translations %}
+        {% for translation in translations %}
+        <div class="history-item-premium" data-aos="fade-left">
+            <div style="display: flex; gap: 24px; align-items: center;">
+                <div
+                    style="font-size: 1.5rem; color: var(--accent-primary); background: rgba(0, 242, 254, 0.1); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 12px;">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+                <div>
+                    <strong style="font-size: 1.2rem; display: block; margin-bottom: 4px;">{{ translation.original_text
+                        }}</strong>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">{{ translation.created_at.strftime('%B
+                        %d, %Y • %H:%M') if translation.created_at else 'N/A' }}</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="btn btn-outline btn-small" onclick="retranslate('{{ translation.original_text }}')">
+                    <i class="fas fa-redo"></i> Translate
+                </button>
+                <button class="btn btn-outline btn-small fav-btn"
+                    style="color: {% if translation.is_favorite %}#fbbf24{% else %}inherit{% endif %};">
+                    {% if translation.is_favorite %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{%
+                    endif %}
+                </button>
+                <button class="btn btn-outline btn-small" style="color: #ef4444;"><i
+                        class="far fa-trash-alt"></i></button>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="glass-card" style="text-align: center; padding: 80px;">
+            <i class="fas fa-history" style="font-size: 4rem; opacity: 0.2; margin-bottom: 24px; display: block;"></i>
+            <h3>No entries found</h3>
+            <p style="color: var(--text-muted); margin-bottom: 32px;">Start your translation journey today.</p>
+            <a href="{{ url_for('translator') }}" class="btn btn-primary">Go to Translator</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function retranslate(text) {
+        localStorage.setItem('retranslateText', text);
+        window.location.href = "{{ url_for('translator') }}";
+    }
+
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+        btn.onclick = () => {
+            const icon = btn.querySelector('i');
+            if (icon.classList.contains('far')) {
+                icon.className = 'fas fa-star';
+                btn.style.color = '#fbbf24';
+            } else {
+                icon.className = 'far fa-star';
+                btn.style.color = 'inherit';
+            }
+        };
+    });
+</script>
+{% endblock %}

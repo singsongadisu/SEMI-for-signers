@@ -1,0 +1,825 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Lab Foundations • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lessons-hub {
+        max-width: 1400px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .main-content {
+        width: 100%;
+    }
+
+    .lesson-grid-premium {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 28px;
+        margin-top: 32px;
+    }
+
+    @media (max-width: 1100px) {
+        .lesson-grid-premium {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .lesson-premium-card {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 30px;
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        border-radius: 20px;
+    }
+
+    .lesson-premium-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--accent-primary);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .category-card {
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .category-card::after {
+        content: '→';
+        position: absolute;
+        bottom: 25px;
+        right: 25px;
+        font-size: 1.5rem;
+        color: var(--accent-primary);
+        opacity: 0.5;
+        transition: 0.3s;
+    }
+
+    .category-card:hover::after {
+        transform: translateX(5px);
+        opacity: 1;
+    }
+
+    .back-btn-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 30px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: 0.4s;
+    }
+
+    .back-btn-container.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .card-header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .lesson-deco-icon {
+        font-size: 2.8rem;
+        background: rgba(255, 255, 255, 0.05);
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lesson-meta-bar {
+        display: flex;
+        gap: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--accent-primary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .reading-content {
+        line-height: 1.8;
+        font-size: 1.15rem;
+        color: #e2e8f0;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 16px;
+    }
+
+    .pdf-viewer {
+        width: 100%;
+        height: 600px;
+        border: none;
+        border-radius: 12px;
+    }
+
+    .video-viewport {
+        position: relative;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 500px;
+    }
+
+    #webcamView {
+        position: fixed;
+        top: 0;
+        left: -9999px;
+        width: 1280px !important;
+        height: 720px !important;
+        opacity: 0.1;
+        pointer-events: none;
+        z-index: -100;
+    }
+
+    #gestureCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        transform: scaleX(-1);
+        z-index: 50 !important;
+        pointer-events: none;
+    }
+
+    .ai-status-pill {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 242, 254, 0.2);
+        color: var(--accent-primary);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--accent-primary);
+        z-index: 100 !important;
+        display: none;
+    }
+
+    .ai-match-glow {
+        box-shadow: 0 0 80px rgba(16, 185, 129, 0.6) inset !important;
+        border-color: #10b981 !important;
+        animation: matchPulse 1.5s infinite;
+    }
+
+    @keyframes matchPulse {
+        0% {
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4) inset;
+        }
+
+        50% {
+            box-shadow: 0 0 100px rgba(16, 185, 129, 0.8) inset;
+        }
+
+        100% {
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4) inset;
+        }
+    }
+
+    #matchSplash {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 4rem;
+        font-weight: 900;
+        color: #10b981;
+        text-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px #10b981;
+        pointer-events: none;
+        z-index: 200;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+
+    #matchSplash.show {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    .ai-coaching-box {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(15px);
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 242, 254, 0.3);
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 600;
+        z-index: 100;
+        text-align: center;
+        max-width: 80%;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        display: none;
+    }
+
+    .ai-coaching-hint {
+        color: var(--accent-primary);
+        margin-bottom: 4px;
+    }
+
+    .btn-success-glow {
+        background: #10b981 !important;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.6) !important;
+        border-color: #10b981 !important;
+        color: #fff !important;
+        animation: btnPulse 1.5s infinite;
+    }
+
+    @keyframes btnPulse {
+        0% {
+            transform: scale(1);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
+        50% {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container lessons-hub">
+    <div class="main-content">
+        <div class="section-header" style="text-align: center;">
+            <div
+                style="display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: wrap; justify-content: center;">
+                <h1 style="font-size: 3rem; margin: 0;">Sign Lab</h1>
+                <span class="badge-vibrant" style="margin: 0;">Sign Lab Foundations</span>
+            </div>
+            <p
+                style="color: var(--text-muted); max-width: 600px; margin-top: 16px; margin-left: auto; margin-right: auto;">
+                Focused modules designed to teach the fundamentals of sign language, from vocabulary to basic
+                conversational structures.
+            </p>
+        </div>
+
+        <!-- View 1: Category Selection (Folder View) -->
+        <div id="categoryCatalog" class="lesson-grid-premium">
+            {% for item in curriculum %}
+            {% if item.lessons %}
+            <div class="glass-card lesson-premium-card category-card" onclick="openCategory('{{ item.module.id }}')">
+                <div class="card-header-flex">
+                    <div class="lesson-deco-icon" style="font-size: 3.5rem;">{{ item.module.icon }}</div>
+                    <div class="lesson-meta-bar">
+                        <span>{{ item.lessons|length }} LESSONS</span>
+                    </div>
+                </div>
+                <div style="flex-grow: 1;">
+                    <h2 style="margin-top: 15px; font-size: 1.8rem; color: #fff;">{{ item.module.name }}</h2>
+                    <p style="font-size: 1rem; color: var(--text-muted); margin-top: 12px; line-height: 1.6;">
+                        {{ item.module.description }}
+                    </p>
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: var(--accent-primary); font-weight: 800; margin-top: 20px; letter-spacing: 2px;">
+                    EXPLORE COLLECTION
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- View 2: Detailed Lesson View -->
+        <div id="lessonCatalog" style="display: none;">
+            <div id="backToCategories" class="back-btn-container">
+                <button onclick="closeCategory()" class="btn btn-outline"
+                    style="border-radius: 50px; padding: 10px 25px;">
+                    <i class="fas fa-arrow-left" style="margin-right: 10px;"></i> Back to Subjects
+                </button>
+            </div>
+
+            {% for item in curriculum %}
+            {% if item.lessons %}
+            <div class="category-detail-view" id="cat-{{ item.module.id }}" style="display: none;">
+                <div
+                    style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 35px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
+                    <span style="font-size: 2.5rem;">{{ item.module.icon }}</span>
+                    <h2 style="font-size: 2.2rem; margin: 0; color: #fff;">{{ item.module.name }}</h2>
+                    <span class="badge-vibrant">{{ item.lessons|length }} MODULES</span>
+                </div>
+
+                <div class="lesson-grid-premium">
+                    {% for lesson in item.lessons %}
+                    <div class="glass-card lesson-premium-card" data-lesson-id="{{ lesson.id }}">
+                        <div class="card-header-flex">
+                            <div class="lesson-deco-icon">{{ lesson.category_icon }}</div>
+                            <div class="lesson-meta-bar">
+                                <span>{{ lesson.difficulty|title }}</span>
+                                <span>•</span>
+                                <span>{{ lesson.duration }} MINS</span>
+                            </div>
+                        </div>
+                        <div style="flex-grow: 1;">
+                            <h3 style="margin-top: 5px;">{{ lesson.title }}</h3>
+                            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 10px; line-height: 1.6;">
+                                {{ lesson.description }}
+                            </p>
+                            <button class="btn btn-primary btn-small start-btn" data-lesson='{{ lesson|tojson|safe }}'
+                                onclick='startLesson(JSON.parse(this.getAttribute("data-lesson")))'
+                                style="margin-top: 25px; width: 100%; justify-content: center; height: 45px;">
+                                <i class="fas fa-play" style="margin-right: 8px; font-size: 0.8rem;"></i> Start Learning
+                            </button>
+                        </div>
+                        <div
+                            style="font-size: 0.7rem; color: var(--accent-primary); font-weight: bold; margin-top: 15px; opacity: 0.7; text-transform: uppercase;">
+                            {{ item.module.name }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        {% if not curriculum %}
+        <div style="text-align: center; padding: 100px 20px; color: var(--text-muted);">
+            <i class="fad fa-books-medical" style="font-size: 4rem; margin-bottom: 25px; opacity: 0.5;"></i>
+            <h3>No foundations available yet</h3>
+            <p>Our neural networks are currently processing new lesson data. Check back shortly!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Active Lesson View -->
+<div id="lessonOverlay" class="active-lesson-overlay">
+    <div class="lesson-stepper-header">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <button id="exitLesson" class="btn btn-outline btn-small"><i class="fas fa-times"></i></button>
+            <div>
+                <h2 id="activeTitle" style="font-size: 1.5rem;">Lesson Title</h2>
+                <span id="activeStepInfo" style="font-size: 0.8rem; color: var(--text-muted);">LOADING...</span>
+            </div>
+        </div>
+        <div style="width: 300px;">
+            <div class="lesson-progress-thin" style="margin: 0;">
+                <div id="topProgressBar" class="lesson-progress-thin-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lesson-main-stage">
+        <div class="video-viewport" id="viewportStage" style="overflow: hidden;">
+            <div id="loadingSpinner" class="fa-3x"><i class="fas fa-circle-notch fa-spin"></i></div>
+
+            <!-- Reference Content (GIF/Video) -->
+            <div id="referenceContent"
+                style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"></div>
+
+            <!-- AI Practice Layer -->
+            <video id="webcamView" width="1280" height="720" autoplay playsinline></video>
+            <canvas id="gestureCanvas"></canvas>
+            <div id="aiStatus" class="ai-status-pill">AI ACTIVE: CALIBRATING...</div>
+            <div id="matchSplash">PERFECT!</div>
+            <div id="coachingBox" class="ai-coaching-box"></div>
+        </div>
+
+        <div class="practice-module">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 id="activeStepTitle">Loading...</h3>
+                <button id="toggleAI" class="btn btn-outline btn-small"
+                    style="font-size: 0.7rem; padding: 5px 12px; border-color: rgba(0, 242, 254, 0.3);">
+                    <i class="fas fa-robot"></i> Practice with AI
+                </button>
+            </div>
+            <p id="activeStepDesc" style="color: var(--text-muted); margin: 12px 0 32px;">Please wait while we prepare
+                your lesson content.</p>
+
+            <div id="practiceArea"></div>
+
+            <div style="display: flex; gap: 16px; margin-top: 40px;">
+                <button id="stepBack" class="btn btn-outline" style="flex: 1; justify-content: center;"
+                    disabled>Back</button>
+                <button id="stepNext" class="btn btn-primary" style="flex: 2; justify-content: center;" disabled>Next
+                    Step</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{{ url_for('static', filename='js/ai_engine.js') }}"></script>
+<script>
+    let activeLesson = { id: null, title: null, steps: [] };
+    let currentStepIndex = 0;
+
+    // AI State
+    let aiEnabled = false;
+    let webcamStream = null;
+    let animationId = null;
+    let currentGhostImg = new Image(); // Preloaded ghost image
+    let activeTemplateLandmarks = null; // Target pose landmarks
+
+    async function startLesson(lesson) {
+        activeLesson.id = lesson.id;
+        activeLesson.title = lesson.title;
+        activeLesson.steps = [];
+        currentStepIndex = 0;
+        document.getElementById('lessonOverlay').style.display = 'flex';
+        document.getElementById('activeTitle').textContent = lesson.title;
+        document.getElementById('activeStepInfo').textContent = 'LOADING MODULE...';
+        document.getElementById('loadingSpinner').style.display = 'block';
+        document.getElementById('referenceContent').innerHTML = '';
+
+        try {
+            const res = await fetch(`/api/lesson/${lesson.id}/steps`);
+            const data = await res.json();
+            if (data.success && data.steps.length > 0) {
+                activeLesson.steps = data.steps;
+                renderStep();
+            } else {
+                showNotifier("Module initialization failed", "error");
+                setTimeout(() => { document.getElementById('lessonOverlay').style.display = 'none'; }, 2000);
+            }
+        } catch (e) {
+            showNotifier("Network signal lost.", "error");
+            document.getElementById('lessonOverlay').style.display = 'none';
+        }
+    }
+
+    function renderStep() {
+        const step = activeLesson.steps[currentStepIndex];
+        const totalSteps = activeLesson.steps.length;
+        document.getElementById('activeStepInfo').textContent = `STEP ${currentStepIndex + 1} OF ${totalSteps}`;
+        document.getElementById('topProgressBar').style.width = `${((currentStepIndex + 1) / totalSteps) * 100}%`;
+
+        document.getElementById('loadingSpinner').style.display = 'none';
+        const reference = document.getElementById('referenceContent');
+        reference.innerHTML = '';
+
+        if (step.content_type === 'youtube' || step.content_url.includes('youtube.com') || step.content_url.includes('youtu.be')) {
+            const embedUrl = getYouTubeEmbedUrl(step.content_url);
+            reference.innerHTML = `<iframe src="${embedUrl}" style="width: 100%; height: 600px; border: none; border-radius: 12px; background: #000;" allowfullscreen></iframe>`;
+        } else if (step.content_type === 'pdf') {
+            reference.innerHTML = `<iframe src="${step.content_url}" style="width: 100%; height: 600px; border: none; border-radius: 12px;"></iframe>`;
+        } else if (step.content_type === 'reading') {
+            reference.innerHTML = `<div class="reading-content" style="text-align: left; padding: 40px;">${step.description}</div>`;
+        } else if (step.content_type === 'video' || step.content_url.endsWith('.gif') || step.content_url.endsWith('.mp4')) {
+            if (step.content_url.endsWith('.mp4')) {
+                reference.innerHTML = `<video src="${step.content_url}" autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: contain; border-radius: 20px;"></video>`;
+            } else {
+                reference.innerHTML = `<img src="${step.content_url.replace(/\\/g, '/')}" style="width: 100%; height: 100%; object-fit: contain; padding: 20px; border-radius: 40px; filter: drop-shadow(0 15px 45px rgba(0,0,0,0.7));">`;
+            }
+        } else if (step.content_type === 'image' ||
+            step.content_url.toLowerCase().endsWith('.jpg') ||
+            step.content_url.toLowerCase().endsWith('.jpeg') ||
+            step.content_url.toLowerCase().endsWith('.png') ||
+            step.content_url.toLowerCase().endsWith('.webp')) {
+            const sanitizedPath = step.content_url.replace(/\\/g, '/');
+            reference.innerHTML = `<img src="${sanitizedPath}" style="width: 100%; height: 100%; object-fit: contain; padding: 20px; border-radius: 40px; filter: drop-shadow(0 15px 45px rgba(0,0,0,0.7));">`;
+
+            // Core: Preload ghost image for AI Lab
+            currentGhostImg.src = sanitizedPath;
+            activeTemplateLandmarks = null; // Clear old template
+
+            currentGhostImg.onload = async () => {
+                // If AI is already enabled, capture immediately
+                if (aiEnabled && window.AIGestureEngine.isInitialized) {
+                    activeTemplateLandmarks = await window.AIGestureEngine.captureTemplate(currentGhostImg);
+                }
+            };
+        } else if (step.content_url) {
+            reference.innerHTML = `<div style="font-size: 5rem; font-weight: bold; color: var(--accent-cyan);">${step.content_url}</div>`;
+            activeTemplateLandmarks = null;
+        } else {
+            activeTemplateLandmarks = null;
+        }
+
+        document.getElementById('activeStepTitle').textContent = step.title;
+        document.getElementById('activeStepDesc').textContent = step.description;
+        const nextBtn = document.getElementById('stepNext');
+        const backBtn = document.getElementById('stepBack');
+
+        nextBtn.textContent = (currentStepIndex === totalSteps - 1) ? "Finish Lab Module" : "Next Step";
+        nextBtn.classList.remove('btn-success-glow');
+
+        // Full AI State Reset for the new step
+        const stage = document.getElementById('viewportStage');
+        if (stage) stage.classList.remove('ai-match-glow');
+
+        const matchSplash = document.getElementById('matchSplash');
+        if (matchSplash) matchSplash.classList.remove('show');
+
+        const coachingBox = document.getElementById('coachingBox');
+        if (coachingBox) {
+            coachingBox.style.display = 'none';
+            coachingBox.innerHTML = '';
+        }
+
+        if (aiEnabled) {
+            nextBtn.disabled = true;
+            backBtn.disabled = true;
+        } else {
+            nextBtn.disabled = false;
+            backBtn.disabled = currentStepIndex === 0;
+        }
+
+        // Update AI target if enabled
+        if (aiEnabled) {
+            updateAITarget(step.title);
+
+            // TRANSITION DEADZONE: Force a re-scan lockdown
+            window.transitionLockout = true;
+            nextBtn.disabled = true;
+            nextBtn.classList.remove('btn-success-glow');
+            aiStatus.textContent = "AI: SCANNING NEW CHARACTER...";
+            aiStatus.style.background = "rgba(0, 242, 254, 0.4)";
+
+            // Clear internal AI state for fresh recognition
+            if (window.AIGestureEngine.clearState) {
+                window.AIGestureEngine.clearState();
+            }
+
+            setTimeout(() => {
+                window.transitionLockout = false;
+                console.log("SEMI AI: Transition Lockout Lifted. Ready for new sign.");
+            }, 800);
+        }
+    }
+
+    // AI Recognition Logic
+    const toggleAIBtn = document.getElementById('toggleAI');
+    const webcam = document.getElementById('webcamView');
+    const canvas = document.getElementById('gestureCanvas');
+    const ctx = canvas.getContext('2d');
+    const aiStatus = document.getElementById('aiStatus');
+    const stage = document.getElementById('viewportStage');
+
+    toggleAIBtn.onclick = async () => {
+        if (!aiEnabled) {
+            await enableAI();
+        } else {
+            disableAI();
+        }
+    };
+
+    async function enableAI() {
+        try {
+            showNotifier("Initializing SEMI AI Neural Engine...");
+            aiStatus.style.display = 'block';
+            aiStatus.textContent = "AI: INITIALIZING MODEL...";
+
+            const success = await window.AIGestureEngine.initialize();
+            if (!success) throw new Error("AI Init Failed");
+
+            webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+            webcam.srcObject = webcamStream;
+            webcam.muted = true;
+
+            await new Promise((resolve) => {
+                webcam.onloadedmetadata = () => {
+                    console.log("SEMI AI: Video Metadata Loaded", webcam.videoWidth, "x", webcam.videoHeight);
+                    webcam.play().then(resolve);
+                };
+            });
+
+            console.log("SEMI AI: Video element dimensions:", webcam.clientWidth, "x", webcam.clientHeight);
+            // Element is already off-screen via CSS, no need to toggle display
+            document.getElementById('referenceContent').style.display = 'none';
+
+            aiEnabled = true;
+            toggleAIBtn.innerHTML = '<i class="fas fa-video-slash"></i> Disable AI';
+            toggleAIBtn.style.borderColor = "var(--accent-primary)";
+
+            // Sync canvas size to viewport exactly
+            canvas.width = stage.clientWidth;
+            canvas.height = stage.clientHeight;
+
+            // Progress Locking: Disable navigation initially
+            document.getElementById('stepNext').disabled = true;
+            document.getElementById('stepBack').disabled = true;
+
+            aiStatus.textContent = "AI: READY - TRACKING HANDS";
+
+            // Capture template if we have a reference image loaded
+            if (currentGhostImg && currentGhostImg.src) {
+                activeTemplateLandmarks = await window.AIGestureEngine.captureTemplate(currentGhostImg);
+                if (activeTemplateLandmarks) {
+                    aiStatus.textContent = "AI: SCANNING FOR PERFECT POSE...";
+                    aiStatus.style.background = "rgba(162, 89, 255, 0.6)";
+                }
+            }
+
+            runAIPrediction();
+        } catch (e) {
+            console.error(e);
+            showNotifier("Camera access or AI model failed.", "error");
+            disableAI();
+        }
+    }
+
+    function disableAI() {
+        aiEnabled = false;
+        // Element is kept off-screen, just stop tracks
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+        }
+        document.getElementById('referenceContent').style.display = 'flex';
+        aiStatus.style.display = 'none';
+
+        // Clear Coaching & Match effects
+        const coachingBox = document.getElementById('coachingBox');
+        coachingBox.style.display = 'none';
+        coachingBox.innerHTML = '';
+
+        const matchSplash = document.getElementById('matchSplash');
+        matchSplash.classList.remove('show');
+
+        toggleAIBtn.innerHTML = '<i class="fas fa-robot"></i> Practice with AI';
+        toggleAIBtn.style.borderColor = "rgba(0, 242, 254, 0.3)";
+        stage.classList.remove('ai-match-glow');
+
+        // Progress Unlocking: Restore navigation
+        const step = activeLesson.steps[currentStepIndex];
+        document.getElementById('stepBack').disabled = currentStepIndex === 0;
+        const nextBtn = document.getElementById('stepNext');
+        nextBtn.disabled = false;
+        nextBtn.classList.remove('btn-success-glow');
+
+        if (animationId) cancelAnimationFrame(animationId);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function runAIPrediction() {
+        if (!aiEnabled) return;
+
+        // Draw Layer 0 (Video) and Layer 1 (Ghost)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        window.AIGestureEngine.drawVideo(ctx, webcam, currentGhostImg);
+
+        const results = window.AIGestureEngine.predict(webcam);
+
+        if (results && results.landmarks) {
+            window.AIGestureEngine.drawLandmarks(ctx, results);
+
+            const stepTitle = activeLesson.steps[currentStepIndex].title;
+            // Pass the active template for dynamic comparison (Amharic support)
+            const result = window.AIGestureEngine.detectGesture(results, stepTitle, activeTemplateLandmarks);
+            if (result) {
+                const gesture = result.gesture;
+                const hints = result.hints;
+
+                // Match logic: ONLY UNLOCK IF THE AI SAYS "MATCHED!"
+                // AND ensure we are not in a transition deadzone
+                const matched = (gesture === "MATCHED!" && !window.transitionLockout);
+
+                const coachingBox = document.getElementById('coachingBox');
+
+                if (matched) {
+                    if (!stage.classList.contains('ai-match-glow')) {
+                        stage.classList.add('ai-match-glow');
+                        document.getElementById('matchSplash').classList.add('show');
+
+                        // Haptic/Visual Feedback
+                        aiStatus.textContent = `AI: MATCHED!`;
+                        aiStatus.style.background = "rgba(16, 185, 129, 0.9)";
+                        aiStatus.style.borderColor = "#10b981";
+                        aiStatus.style.boxShadow = "0 0 20px rgba(16, 185, 129, 0.5)";
+
+                        // Unlock Next Button with success glow
+                        const nextBtn = document.getElementById('stepNext');
+                        nextBtn.disabled = false;
+                        nextBtn.classList.add('btn-success-glow');
+                    }
+                    coachingBox.style.display = 'none';
+                } else {
+                    stage.classList.remove('ai-match-glow');
+                    document.getElementById('matchSplash').classList.remove('show');
+                    aiStatus.textContent = `AI: ${gesture}`;
+                    aiStatus.style.background = "rgba(0, 242, 254, 0.4)";
+                    aiStatus.style.borderColor = "var(--accent-primary)";
+                    aiStatus.style.color = "#fff";
+
+                    // Keep button locked if not matched and AI is enabled
+                    const nextBtn = document.getElementById('stepNext');
+                    if (!nextBtn.classList.contains('btn-success-glow')) {
+                        nextBtn.disabled = true;
+                    }
+
+                    // Coaching Logic: Show hints if not matched
+                    if (hints && hints.length > 0) {
+                        coachingBox.style.display = 'block';
+                        coachingBox.innerHTML = hints.map(h => `<div class="ai-coaching-hint"><i class="fas fa-lightbulb"></i> ${h}</div>`).join('');
+                    } else {
+                        coachingBox.style.display = 'none';
+                    }
+                }
+            }
+        }
+
+        animationId = requestAnimationFrame(runAIPrediction);
+    }
+
+    function updateAITarget(stepTitle) {
+        if (!aiEnabled) return;
+        aiStatus.textContent = `AI: SEARCHING FOR ${stepTitle.toUpperCase()}...`;
+    }
+
+    function getYouTubeEmbedUrl(url) {
+        if (!url) return '';
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : url;
+    }
+
+    document.getElementById('stepNext').onclick = async () => {
+        if (currentStepIndex < activeLesson.steps.length - 1) {
+            currentStepIndex++;
+            renderStep();
+        } else {
+            try {
+                const res = await fetch('/api/lesson/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lesson_id: activeLesson.id })
+                });
+                const result = await res.json();
+                if (result.success) showNotifier(`Lab Module Complete! +50 XP`, "success");
+            } catch (e) { }
+            disableAI();
+            setTimeout(() => {
+                document.getElementById('lessonOverlay').style.display = 'none';
+                location.reload();
+            }, 1000);
+        }
+    };
+
+    document.getElementById('stepBack').onclick = () => {
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            renderStep();
+        }
+    };
+
+    document.getElementById('exitLesson').onclick = () => {
+        showConfirm('Exit Sign Lab', "Are you sure you want to exit this Lab Module?", (confirmed) => {
+            if (confirmed) {
+                disableAI();
+                document.getElementById('lessonOverlay').style.display = 'none';
+            }
+        });
+    };
+
+    // Category Navigation Logic
+    window.openCategory = function (catId) {
+        const catalog = document.getElementById('categoryCatalog');
+        const lessonView = document.getElementById('lessonCatalog');
+        const backBtn = document.getElementById('backToCategories');
+
+        // Hide Main Catalog
+        catalog.style.display = 'none';
+
+        // Show Lesson View
+        lessonView.style.display = 'block';
+        setTimeout(() => backBtn.classList.add('show'), 10);
+
+        // Hide all details, show specific one
+        document.querySelectorAll('.category-detail-view').forEach(v => v.style.display = 'none');
+        document.getElementById('cat-' + catId).style.display = 'block';
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.closeCategory = function () {
+        const catalog = document.getElementById('categoryCatalog');
+        const lessonView = document.getElementById('lessonCatalog');
+        const backBtn = document.getElementById('backToCategories');
+
+        backBtn.classList.remove('show');
+        setTimeout(() => {
+            lessonView.style.display = 'none';
+            catalog.style.display = 'grid';
+        }, 300);
+    };
+</script>
+{% endblock %}

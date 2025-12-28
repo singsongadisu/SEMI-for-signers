@@ -1,0 +1,9 @@
+{
+  "lessons": {
+    "greetings": ["hello", "thank you", "good morning", "good afternoon", "good night", "how are you"],
+    "food": ["apple", "banana", "bread", "cake", "candy", "lemon"],
+    "school": ["teacher", "student", "book", "write", "read", "school"],
+    "health": ["doctor", "hospital", "medicine", "sick", "pain", "help"],
+    "emergency": ["help", "fire", "police", "stop", "danger", "call 911"]
+  }
+}

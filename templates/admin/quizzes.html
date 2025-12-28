@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Management • SEMI{% endblock %}
+
+{% block nav_links %}
+<a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+    <i class="fas fa-chart-pie"></i> Insights
+</a>
+<a href="{{ url_for('admin_users') }}" class="nav-link">
+    <i class="fas fa-users-cog"></i> Users
+</a>
+<a href="{{ url_for('admin_courses') }}" class="nav-link">
+    <i class="fas fa-layer-group"></i> Courses
+</a>
+<a href="{{ url_for('admin_lessons') }}" class="nav-link">
+    <i class="fas fa-book-reader"></i> Lessons
+</a>
+<a href="{{ url_for('admin_quizzes') }}" class="nav-link active">
+    <i class="fas fa-vial"></i> Quizzes
+</a>
+<a href="{{ url_for('dashboard') }}" class="nav-link">
+    <i class="fas fa-user-circle"></i> Exit Admin
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quiz-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 30px;
+    }
+
+    .question-card {
+        padding: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .question-preview {
+        height: 160px;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .question-preview img {
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+    }
+
+    .question-content {
+        padding: 20px;
+        flex-grow: 1;
+    }
+
+    .question-meta {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px 20px;
+        border-top: 1px solid var(--glass-border);
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .option-item {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--glass-border);
+        border-radius: 6px;
+        margin-bottom: 6px;
+    }
+
+    .option-correct {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .gif-preview-container {
+        width: 100%;
+        height: 200px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 2px dashed var(--glass-border);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .gif-preview-container img {
+        max-height: 100%;
+        max-width: 100%;
+        display: none;
+        /* Hide all by default for sequence */
+    }
+
+    .gif-preview-container img.active {
+        display: block;
+    }
+
+    .media-input-item {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .media-input-item .form-input {
+        flex-grow: 1;
+    }
+
+    .btn-icon {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px;">
+        <div>
+            <span class="badge-vibrant">Assessment Control</span>
+            <h1 style="font-size: 2.5rem; margin-top: 8px;">Question Bank</h1>
+        </div>
+        <button onclick="openQuizModal()" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Question
+        </button>
+    </div>
+
+    <div class="quiz-grid">
+        {% for q in questions %}
+        <div class="glass-card question-card" data-aos="fade-up">
+            <div class="question-preview">
+                {% if q.media_urls and q.media_urls|length > 1 %}
+                <div style="position: absolute; top: 10px; left: 10px; z-index: 10;">
+                    <span class="badge"
+                        style="background: var(--accent-primary); font-size: 0.7rem; padding: 4px 8px;"><i
+                            class="fas fa-images"></i> {{ q.media_urls|length }}</span>
+                </div>
+                {% endif %}
+                <img src="{{ q.sign_url }}" alt="Sign Preview"
+                    onerror="this.src='https://via.placeholder.com/300x160?text=No+Preview'">
+                <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
+                    <button onclick="openQuizModal(true, '{{ q.id }}')" class="btn btn-outline btn-small"
+                        style="padding: 6px 10px; background: rgba(0,0,0,0.5); border: none;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteQuestion('{{ q.id }}')" class="btn btn-outline btn-small"
+                        style="padding: 6px 10px; background: rgba(0,0,0,0.5); border: none; color: #ef4444;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <span class="badge"
+                    style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6);">{{
+                    q.difficulty|upper }}</span>
+            </div>
+            <div class="question-content">
+                <h4 style="margin: 0 0 15px 0; color: #fff;">{{ q.question_text }}</h4>
+                <div class="options-list">
+                    {% for option in q.options %}
+                    <div class="option-item {% if loop.index0 == q.correct_answer_index %}option-correct{% endif %}">
+                        {{ option }}
+                        {% if loop.index0 == q.correct_answer_index %}
+                        <i class="fas fa-check-circle" style="float: right;"></i>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="question-meta">
+                <span><i class="fas fa-tag"></i> {{ q.category }}</span>
+                <span><i class="fas fa-chart-line"></i> {{ q.times_correct }}/{{ q.times_shown }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Question Modal -->
+<div id="quizModal" class="modal-overlay">
+    <div class="glass-card modal-card" style="max-width: 600px; width: 95%;">
+        <h3 id="modalTitle" class="modal-title">New Quiz Question</h3>
+        <form id="quizForm" style="margin-top: 20px;">
+            <input type="hidden" id="questionId">
+
+            <div class="gif-preview-container" id="gifPreview">
+                <span style="color: var(--text-muted);">Media Preview</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Question Text</label>
+                <input type="text" id="questionText" class="form-input" required
+                    placeholder="e.g., What does this sign mean?">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Sign Media Sequence (GIFs/PNGs)</label>
+                <div id="mediaUrlsContainer">
+                    <!-- Dynamic inputs here -->
+                </div>
+                <button type="button" onclick="addMediaInput()" class="btn btn-outline btn-small"
+                    style="margin-top: 10px;">
+                    <i class="fas fa-plus"></i> Add Image/GIF
+                </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Difficulty</label>
+                    <div class="custom-select-wrapper">
+                        <select id="difficulty" class="form-input" required>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <div class="custom-select-wrapper">
+                        <select id="category" class="form-input" required>
+                            <option value="words">Words</option>
+                            <option value="phrases">Phrases</option>
+                            <option value="alphabet">Alphabet</option>
+                            <option value="numbers">Numbers</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Options (Exactly 4)</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input type="text" class="form-input quiz-option" required placeholder="Option 1">
+                    <input type="text" class="form-input quiz-option" required placeholder="Option 2">
+                    <input type="text" class="form-input quiz-option" required placeholder="Option 3">
+                    <input type="text" class="form-input quiz-option" required placeholder="Option 4">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Correct Answer Index (0 to 3)</label>
+                <div class="custom-select-wrapper">
+                    <select id="correctIndex" class="form-input" required>
+                        <option value="0">Option 1 is correct</option>
+                        <option value="1">Option 2 is correct</option>
+                        <option value="2">Option 3 is correct</option>
+                        <option value="3">Option 4 is correct</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button type="button" onclick="closeQuizModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" id="saveBtn" class="btn btn-primary">Save Question</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="questionsData" type="application/json">{{ questions|tojson|safe }}</script>
+<script>
+    const questionsData = JSON.parse(document.getElementById('questionsData').textContent);
+    let isEditing = false;
+    let previewInterval = null;
+
+    function updatePreview() {
+        const container = document.getElementById('gifPreview');
+        const urls = getMediaUrls();
+
+        clearInterval(previewInterval);
+        container.innerHTML = '';
+
+        if (urls.length === 0) {
+            container.innerHTML = '<span style="color: var(--text-muted);">Media Preview</span>';
+            return;
+        }
+
+        urls.forEach((url, index) => {
+            const img = document.createElement('img');
+            img.src = url;
+            if (index === 0) img.classList.add('active');
+            img.onerror = () => {
+                img.src = 'https://via.placeholder.com/300x200?text=Invalid+Path';
+            };
+            container.appendChild(img);
+        });
+
+        if (urls.length > 1) {
+            let currentIndex = 0;
+            const images = container.querySelectorAll('img');
+            previewInterval = setInterval(() => {
+                images[currentIndex].classList.remove('active');
+                currentIndex = (currentIndex + 1) % images.length;
+                images[currentIndex].classList.add('active');
+            }, 1000);
+        }
+    }
+
+    function addMediaInput(value = '') {
+        const container = document.getElementById('mediaUrlsContainer');
+        const div = document.createElement('div');
+        div.className = 'media-input-item';
+        div.innerHTML = `
+            <input type="text" class="form-input media-url-input" required placeholder="/static/sign/words/hello.gif" value="${value}" oninput="updatePreview()">
+            <button type="button" onclick="this.parentElement.remove(); updatePreview();" class="btn btn-outline btn-icon" style="color: #ef4444;">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        container.appendChild(div);
+        updatePreview();
+    }
+
+    function getMediaUrls() {
+        return Array.from(document.querySelectorAll('.media-url-input'))
+            .map(input => input.value.trim())
+            .filter(val => val !== '');
+    }
+
+    function openQuizModal(edit = false, qid = null) {
+        isEditing = edit;
+        const modal = document.getElementById('quizModal');
+        const options = document.querySelectorAll('.quiz-option');
+        const mediaContainer = document.getElementById('mediaUrlsContainer');
+        mediaContainer.innerHTML = '';
+
+        if (edit && qid) {
+            const q = questionsData.find(item => item.id === qid);
+            if (q) {
+                document.getElementById('questionId').value = q.id;
+                document.getElementById('questionText').value = q.question_text;
+                document.getElementById('difficulty').value = q.difficulty;
+                document.getElementById('category').value = q.category;
+                document.getElementById('correctIndex').value = q.correct_answer_index;
+
+                // Load media URLs
+                if (q.media_urls && q.media_urls.length > 0) {
+                    q.media_urls.forEach(url => addMediaInput(url));
+                } else if (q.sign_url) {
+                    addMediaInput(q.sign_url);
+                }
+
+                q.options.forEach((opt, idx) => {
+                    if (options[idx]) options[idx].value = opt;
+                });
+
+                document.getElementById('modalTitle').textContent = 'Sync Question';
+            }
+        } else {
+            document.getElementById('quizForm').reset();
+            document.getElementById('questionId').value = '';
+            document.getElementById('modalTitle').textContent = 'Initialize Question';
+            addMediaInput('');
+        }
+
+        modal.classList.add('active');
+        updatePreview();
+    }
+
+    function closeQuizModal() {
+        document.getElementById('quizModal').classList.remove('active');
+        clearInterval(previewInterval);
+    }
+
+    document.getElementById('quizForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('questionId').value;
+        const endpoint = id ? `/admin/edit_quiz_question/${id}` : '/admin/add_quiz_question';
+
+        const options = Array.from(document.querySelectorAll('.quiz-option')).map(i => i.value);
+        const mediaUrls = getMediaUrls();
+
+        if (mediaUrls.length === 0) {
+            showNotifier('At least one media URL is required', 'error');
+            return;
+        }
+
+        const data = {
+            question_text: document.getElementById('questionText').value,
+            media_urls: mediaUrls,
+            difficulty: document.getElementById('difficulty').value,
+            category: document.getElementById('category').value,
+            options: options,
+            correct_answer_index: parseInt(document.getElementById('correctIndex').value)
+        };
+
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotifier(result.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotifier(result.message, 'error');
+                btn.disabled = false;
+                btn.innerText = 'Save Question';
+            }
+        } catch (err) {
+            showNotifier('Signal lost. Try again.', 'error');
+            btn.disabled = false;
+            btn.innerText = 'Save Question';
+        }
+    };
+
+    function deleteQuestion(qid) {
+        showConfirm('Purge Question', 'This will remove the question from the interactive pool. Continue?', async (confirmed) => {
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`/admin/delete_quiz_question/${qid}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showNotifier(result.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                }
+            } catch (e) {
+                showNotifier('System exception during purge.', 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}

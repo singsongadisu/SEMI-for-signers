@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}User Management • SEMI{% endblock %}
+
+{% block nav_links %}
+<a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+    <i class="fas fa-chart-pie"></i> Insights
+</a>
+<a href="{{ url_for('admin_users') }}" class="nav-link active">
+    <i class="fas fa-users-cog"></i> Users
+</a>
+<a href="{{ url_for('admin_courses') }}" class="nav-link">
+    <i class="fas fa-layer-group"></i> Courses
+</a>
+<a href="{{ url_for('admin_lessons') }}" class="nav-link">
+    <i class="fas fa-book-reader"></i> Lessons
+</a>
+<a href="{{ url_for('admin_quizzes') }}" class="nav-link">
+    <i class="fas fa-vial"></i> Quizzes
+</a>
+<a href="{{ url_for('dashboard') }}" class="nav-link">
+    <i class="fas fa-user-circle"></i> Exit Admin
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-table-container {
+        margin-top: 40px;
+        overflow-x: auto;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--glass-border);
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .premium-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .premium-table th {
+        padding: 20px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .premium-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--glass-border);
+        vertical-align: middle;
+    }
+
+    .user-pill {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-initials {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-primary);
+        color: var(--bg-deep);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+    }
+
+    .status-chip {
+        padding: 6px 12px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .status-pending {
+        background: rgba(251, 191, 36, 0.1);
+        color: #fbbf24;
+    }
+
+    .status-approved {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .status-rejected {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px;">
+        <div>
+            <span class="badge-vibrant">Personnel Management</span>
+            <h1 style="font-size: 2.5rem; margin-top: 8px;">User Directory</h1>
+        </div>
+        <div class="glass-card" style="padding: 8px 16px; display: flex; gap: 16px; align-items: center;">
+            <i class="fas fa-search" style="color: var(--text-muted);"></i>
+            <input type="text" id="userSearch" placeholder="Find by name or email..."
+                style="background: transparent; border: none; color: #fff; outline: none;">
+        </div>
+    </div>
+
+    <div class="admin-table-container glass-card" data-aos="fade-up">
+        <table class="premium-table">
+            <thead>
+                <tr>
+                    <th>User Profile</th>
+                    <th>Email Address</th>
+                    <th>Status</th>
+                    <th>Identity</th>
+                    <th>Join Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr class="user-row">
+                    <td>
+                        <div class="user-pill">
+                            <div class="user-initials">{{ user.first_name[0] if user.first_name else 'U' }}</div>
+                            <div>
+                                <strong style="display: block;">{{ user.first_name }} {{ user.last_name }}</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">@{{ user.username }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="color: var(--text-muted);">{{ user.email }}</td>
+                    <td>
+                        <span class="status-chip status-{{ user.status }}">
+                            {{ user.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if user.is_verified %}
+                        <span style="color: #10b981;"><i class="fas fa-check-circle"></i> Verified</span>
+                        {% else %}
+                        <span style="color: var(--text-muted);"><i class="far fa-circle"></i> Unverified</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-muted);">
+                        {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '2025-01-01' }}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            {% if user.status == 'pending' %}
+                            <button onclick="updateStatus('{{ user.id }}', 'approve')" class="btn btn-primary btn-small"
+                                title="Approve"><i class="fas fa-user-check"></i></button>
+                            <button onclick="updateStatus('{{ user.id }}', 'reject')" class="btn btn-outline btn-small"
+                                style="color: #ef4444;" title="Reject"><i class="fas fa-user-times"></i></button>
+                            {% endif %}
+                            <button onclick="deleteUser('{{ user.id }}')" class="btn btn-outline btn-small"
+                                style="color: #64748b; border-color: rgba(255,255,255,0.1);" title="Delete Identity">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function updateStatus(uid, action) {
+        showConfirm(
+            'Inhibit/Validate Identity',
+            `Are you certain you wish to ${action} this account? An official transmission will be dispatched to the user.`,
+            async (confirmed) => {
+                if (!confirmed) return;
+
+                try {
+                    const res = await fetch(`/admin/${action}_user/${uid}`, { method: 'POST' });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        showNotifier(data.message, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotifier(data.message || "Protocol failure", 'error');
+                    }
+                } catch (e) {
+                    showNotifier("System exception during transmission.", "error");
+                }
+            }
+        );
+    }
+
+    async function deleteUser(uid) {
+        showConfirm(
+            'CRITICAL: Purge Identity',
+            'This action is IRREVERSIBLE. All progress, translations, and credentials will be permanently deleted from the SEMI neural network.',
+            async (confirmed) => {
+                if (!confirmed) return;
+
+                try {
+                    const res = await fetch(`/admin/delete_user/${uid}`, { method: 'POST' });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        showNotifier(data.message, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotifier(data.message || "Purge failed", 'error');
+                    }
+                } catch (e) {
+                    showNotifier("System exception during purge.", "error");
+                }
+            }
+        );
+    }
+
+    document.getElementById('userSearch').oninput = (e) => {
+        const val = e.target.value.toLowerCase();
+        document.querySelectorAll('.user-row').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(val) ? '' : 'none';
+        });
+    };
+</script>
+{% endblock %}

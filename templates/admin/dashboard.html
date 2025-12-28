@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Control • SEMI{% endblock %}
+
+{% block nav_links %}
+<a href="{{ url_for('admin_dashboard') }}" class="nav-link active">
+    <i class="fas fa-chart-pie"></i> Insights
+</a>
+<a href="{{ url_for('admin_users') }}" class="nav-link">
+    <i class="fas fa-users-cog"></i> Users
+</a>
+<a href="{{ url_for('admin_courses') }}" class="nav-link">
+    <i class="fas fa-layer-group"></i> Courses
+</a>
+<a href="{{ url_for('admin_lessons') }}" class="nav-link">
+    <i class="fas fa-book-reader"></i> Lessons
+</a>
+<a href="{{ url_for('admin_quizzes') }}" class="nav-link">
+    <i class="fas fa-vial"></i> Quizzes
+</a>
+<a href="{{ url_for('admin_feedback') }}" class="nav-link">
+    <i class="fas fa-comments"></i> Feedback
+</a>
+<a href="{{ url_for('dashboard') }}" class="nav-link">
+    <i class="fas fa-user-circle"></i> Exit Admin
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px;">
+    <div class="section-header">
+        <span class="badge-vibrant">System Overview</span>
+        <h1 style="font-size: 3rem; margin-top: 12px;">Admin Hub</h1>
+        <p style="color: var(--text-muted);">Manage users, oversee educational content, and track platform performance.
+        </p>
+    </div>
+
+    <!-- Admin Stats -->
+    <div class="stats-grid" style="margin-bottom: 60px;">
+        <div class="glass-card stat-card" data-aos="zoom-in">
+            <div class="stat-icon" style="background: rgba(0, 242, 254, 0.1); color: var(--accent-primary);">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value counter" data-target="{{ total_users }}">{{ total_users }}</span>
+                <span class="stat-label">Total Users</span>
+            </div>
+        </div>
+        <div class="glass-card stat-card" data-aos="zoom-in" data-aos-delay="100">
+            <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1); color: #fbbf24;">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value counter" data-target="{{ pending_users }}">{{ pending_users }}</span>
+                <span class="stat-label">Pending</span>
+            </div>
+        </div>
+        <div class="glass-card stat-card" data-aos="zoom-in" data-aos-delay="200">
+            <div class="stat-icon" style="background: rgba(162, 89, 255, 0.1); color: var(--accent-secondary);">
+                <i class="fas fa-book-reader"></i>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value counter" data-target="{{ total_courses }}">{{ total_courses }}</span>
+                <span class="stat-label">Courses</span>
+            </div>
+        </div>
+        <div class="glass-card stat-card" data-aos="zoom-in" data-aos-delay="300">
+            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                <i class="fas fa-exchange-alt"></i>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value counter" data-target="{{ total_translations }}">{{ total_translations }}</span>
+                <span class="stat-label">Translations</span>
+            </div>
+        </div>
+        <div class="glass-card stat-card" data-aos="zoom-in" data-aos-delay="400">
+            <div class="stat-icon" style="background: rgba(244, 63, 94, 0.1); color: #f43f5e;">
+                <i class="fas fa-comment-dots"></i>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value counter" data-target="{{ unread_feedback }}">{{ unread_feedback }}</span>
+                <span class="stat-label">Feedback</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 40px; align-items: start;">
+        <!-- Management Quick Links -->
+        <section>
+            <h2 style="margin-bottom: 24px;">Management Console</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <a href="{{ url_for('admin_users') }}" class="glass-card"
+                    style="padding: 32px; text-decoration: none; transition: 0.3s; border-color: rgba(0, 242, 254, 0.2);">
+                    <i class="fas fa-user-shield"
+                        style="font-size: 2rem; color: var(--accent-primary); margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #fff;">User Registry</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 8px;">Review, approve, or suspend
+                        user access and permissions.</p>
+                </a>
+                <a href="{{ url_for('admin_courses') }}" class="glass-card"
+                    style="padding: 32px; text-decoration: none; transition: 0.3s; border-color: rgba(162, 89, 255, 0.2);">
+                    <i class="fas fa-edit"
+                        style="font-size: 2rem; color: var(--accent-secondary); margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #fff;">Curriculum Editor</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 8px;">Build courses and manage
+                        the high-level learning structure.</p>
+                </a>
+                <a href="{{ url_for('admin_lessons') }}" class="glass-card"
+                    style="padding: 32px; text-decoration: none; transition: 0.3s; border-color: rgba(16, 185, 129, 0.2);">
+                    <i class="fas fa-book-reader"
+                        style="font-size: 2rem; color: #10b981; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #fff;">Interactive Lessons</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 8px;">Design granular lesson
+                        steps
+                        with videos, GIFs, and detailed guides.</p>
+                </a>
+                <a href="{{ url_for('admin_quizzes') }}" class="glass-card"
+                    style="padding: 32px; text-decoration: none; transition: 0.3s; border-color: rgba(251, 191, 36, 0.2);">
+                    <i class="fas fa-vial"
+                        style="font-size: 2rem; color: #fbbf24; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #fff;">Quiz Bank</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 8px;">Manage the question pool,
+                        track performance, and update assessments.</p>
+                </a>
+                <a href="{{ url_for('admin_feedback') }}" class="glass-card"
+                    style="padding: 32px; text-decoration: none; transition: 0.3s; border-color: rgba(244, 63, 94, 0.2);">
+                    <i class="fas fa-comment-alt"
+                        style="font-size: 2rem; color: #f43f5e; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #fff;">User Insights</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 8px;">Review user feedback,
+                        suggestions, and technical reports.</p>
+                </a>
+            </div>
+        </section>
+
+        <!-- System Alert / Health -->
+        <section class="glass-card" style="padding: 32px;">
+            <h3 style="margin-bottom: 20px;">Platform Health</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div
+                    style="background: rgba(16, 185, 129, 0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    <span style="font-size: 0.9rem;">Database: Synchronized</span>
+                </div>
+                <div
+                    style="background: rgba(0, 242, 254, 0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2); display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-server" style="color: var(--accent-primary);"></i>
+                    <span style="font-size: 0.9rem;">Asset Server: Online</span>
+                </div>
+                <div
+                    style="background: rgba(251, 191, 36, 0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-envelope" style="color: #fbbf24;"></i>
+                    <span style="font-size: 0.9rem;">SMTP Service: Ready</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

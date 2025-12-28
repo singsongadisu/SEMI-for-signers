@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SEMI • Empowering Deaf Education{% endblock %}</title>
+    <meta name="description"
+        content="SEMI: A modern educational platform for deaf students. Explore ASL lessons, tools, and community support.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" crossorigin="anonymous">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+    <!-- Animated Aurora Background -->
+    <div class="aurora-container">
+        <div class="aurora-blob aurora-blob-1"></div>
+        <div class="aurora-blob aurora-blob-2"></div>
+        <div class="aurora-blob aurora-blob-3"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="glass-nav">
+        <div class="nav-container">
+            <a href="{{ url_for('home') }}" class="nav-brand">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SEMI Logo" class="brand-logo">
+                <span class="brand-name">SEMI</span>
+            </a>
+
+            <div class="nav-links">
+                {% block nav_links %}
+                <a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint == 'home' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="{{ url_for('translator') }}"
+                    class="nav-link {% if request.endpoint == 'translator' %}active{% endif %}">
+                    <i class="fas fa-language"></i> Translator
+                </a>
+                <a href="{{ url_for('quiz_page') }}"
+                    class="nav-link {% if request.endpoint == 'quiz_page' %}active{% endif %}">
+                    <i class="fas fa-question-circle"></i> Quiz
+                </a>
+                <a href="{{ url_for('sign_lab_page') }}"
+                    class="nav-link {% if request.endpoint == 'sign_lab_page' %}active{% endif %}">
+                    <i class="fas fa-hand-sparkles"></i> Sign Lab
+                </a>
+                <a href="{{ url_for('courses') }}"
+                    class="nav-link {% if request.endpoint == 'courses' %}active{% endif %}">
+                    <i class="fas fa-graduation-cap"></i> Courses
+                </a>
+                {% endblock %}
+            </div>
+
+            <div class="nav-auth">
+                {% if current_user.is_authenticated %}
+                <div class="user-profile-menu">
+                    <div class="user-avatar-trigger" id="userMenuTrigger">
+                        <span>{{ current_user.first_name[0] if current_user.first_name else current_user.username[0]
+                            }}</span>
+                    </div>
+                    <div class="glass-dropdown" id="userDropdown">
+                        <div class="dropdown-info">
+                            <strong>{{ current_user.first_name }} {{ current_user.last_name }}</strong>
+                            <span>{{ current_user.email }}</span>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('dashboard') }}" class="dropdown-item">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="dropdown-item">
+                            <i class="fas fa-user"></i> Profile
+                        </a>
+                        <a href="{{ url_for('history') }}" class="dropdown-item">
+                            <i class="fas fa-history"></i> History
+                        </a>
+                        <a href="{{ url_for('feedback') }}" class="dropdown-item">
+                            <i class="fas fa-comment-dots"></i> Feedback
+                        </a>
+                        {% if current_user.is_admin %}
+                        <div class="dropdown-divider"></div>
+                        {% if session.get('admin_mode', True) %}
+                        {# When in Admin Mode, show only option to switch back to User #}
+                        <a href="{{ url_for('switch_mode') }}" class="dropdown-item">
+                            <i class="fas fa-user"></i> Switch to User View
+                        </a>
+                        {% else %}
+                        {# When in User Mode, show ONLY Admin Panel to switch back #}
+                        <a href="{{ url_for('switch_mode') }}" class="dropdown-item admin-link">
+                            <i class="fas fa-user-shield"></i> Admin Panel
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item logout-link">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline">Sign In</a>
+                <a href="{{ url_for('register') }}" class="btn btn-primary">Join Free</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="page-content" style="padding-top: 90px;">
+        {% if request.endpoint == 'home' %}
+        <style>
+            .page-content {
+                padding-top: 0 !important;
+            }
+        </style>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Dynamic Floating Footer -->
+    <footer class="footer-wrapper" data-aos="fade-up">
+        <div class="footer-background-text">SEMI</div>
+
+        <div class="footer-island glass-card">
+            <div class="footer-content-grid">
+                <!-- Brand Spotlight -->
+                <div class="footer-spotlight">
+                    <div class="spotlight-header">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SEMI Logo"
+                            class="footer-logo">
+                        <div class="brand-text-block">
+                            <h2 class="footer-brand-title">SEMI</h2>
+                            <span class="brand-subtitle">The Sign Ecosystem</span>
+                        </div>
+                    </div>
+                    <p class="footer-description">
+                        Revolutionizing human connection through technological empathy. We build the bridges where
+                        communication creates community.
+                    </p>
+                    <div class="social-links-premium">
+                        <a href="#" class="social-btn"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-btn"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-btn"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+
+                <!-- Navigation Columns -->
+                <div class="footer-main-nav">
+                    <div class="nav-stack">
+                        <h4 class="nav-title">Platform</h4>
+                        <a href="{{ url_for('courses') }}" class="nav-item">Learning Hub</a>
+                        <a href="{{ url_for('translator') }}" class="nav-item">ASL Translator</a>
+                        <a href="{{ url_for('quiz_page') }}" class="nav-item">Skill Arena</a>
+                        <a href="{{ url_for('feedback') }}" class="nav-item">Send Feedback</a>
+                    </div>
+                    <div class="nav-stack">
+                        <h4 class="nav-title">Ecosystem</h4>
+                        <a href="{{ url_for('sign_lab_page') }}" class="nav-item">Sign Lab</a>
+                        <a href="#" class="nav-item">Community</a>
+                        <a href="#" class="nav-item">API Access</a>
+                    </div>
+                </div>
+
+                <!-- Premium Newsletter -->
+                <div class="footer-action-zone">
+                    <div class="newsletter-card glass-card">
+                        <h4 class="action-title">Stay in Orbit</h4>
+                        <p class="action-text">Get weekly ASL insights delivered to your terminal.</p>
+                        <form class="action-form" onsubmit="event.preventDefault();">
+                            <input type="email" placeholder="Your email..." class="action-input" required>
+                            <button type="submit" class="action-submit">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom-bar">
+                <div class="legal-wrap">
+                    <span>&copy; 2025 SEMI Ecosystem.</span>
+                    <div class="legal-links">
+                        <a href="#">Privacy</a>
+                        <a href="#">Terms</a>
+                        <a href="#">System State</a>
+                    </div>
+                </div>
+                <div class="scroll-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom Notifier -->
+    <div id="notifierContainer" class="notifier-container"></div>
+
+    <!-- Custom confirm modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <h3 id="confirmTitle" class="modal-title">Confirm Action</h3>
+            <p id="confirmMessage" class="modal-message">Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button id="confirmCancel" class="btn btn-outline">Cancel</button>
+                <button id="confirmProceed" class="btn btn-primary">Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash messages data source -->
+    <div id="flashed-messages-data" style="display: none;"
+        data-messages='{{ get_flashed_messages(with_categories=true) | tojson | safe }}'></div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Professional Notification System
+        function showNotifier(message, type = 'info') {
+            const container = document.getElementById('notifierContainer');
+            const notifier = document.createElement('div');
+            notifier.className = `notifier glass-card notifier-${type}`;
+
+            const icon = type === 'success' ? 'fa-check-circle' :
+                type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
+
+            notifier.innerHTML = `
+                <div class="notifier-content">
+                    <i class="fas ${icon} notifier-icon"></i>
+                    <span class="notifier-message">${message}</span>
+                </div>
+                <div class="notifier-progress"></div>
+            `;
+
+            container.appendChild(notifier);
+
+            // Trigger animation
+            setTimeout(() => notifier.classList.add('active'), 10);
+
+            // Auto-remove
+            setTimeout(() => {
+                notifier.classList.remove('active');
+                setTimeout(() => notifier.remove(), 400);
+            }, 5000);
+        }
+
+        // Real UI Confirmation System
+        function showConfirm(title, message, callback) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+
+            modal.classList.add('active');
+
+            const proceedBtn = document.getElementById('confirmProceed');
+            const cancelBtn = document.getElementById('confirmCancel');
+
+            const close = () => modal.classList.remove('active');
+
+            proceedBtn.onclick = () => {
+                close();
+                callback(true);
+            };
+
+            cancelBtn.onclick = () => {
+                close();
+                callback(false);
+            };
+        }
+
+        // Flash message handling
+        const messagesEl = document.getElementById('flashed-messages-data');
+        if (messagesEl) {
+            const flashedMessages = JSON.parse(messagesEl.dataset.messages || '[]');
+            if (flashedMessages.length > 0) {
+                flashedMessages.forEach(([category, message]) => {
+                    showNotifier(message, category === 'success' ? 'success' : 'error');
+                });
+            }
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

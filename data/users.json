@@ -1,0 +1,32 @@
+{
+  "fc800f00-fb17-4c9b-a1fb-f1183e815c17": {
+    "id": "fc800f00-fb17-4c9b-a1fb-f1183e815c17",
+    "username": "Singsong",
+    "email": "singsongadisu@gmail.com",
+    "password_hash": "scrypt:32768:8:1$NbF4nNmv1FjclXnM$77d7883d1f6a966b6e4c7afb8f566c145da561b182e35499cd1ea08771297267eb9add29ab638c423e5f6300c933ea2022df21e467a04ca8a971b6fcd57bfa11",
+    "first_name": "Singsong",
+    "last_name": "Bezuneh",
+    "created_at": "2025-09-03T05:30:19.290470",
+    "is_active": true,
+    "is_verified": true,
+    "is_admin": false,
+    "verification_token": "",
+    "status": "approved",
+    "last_login": "2025-09-03T06:01:07.161809"
+  },
+  "b9443692-7716-49a0-a0ac-c7d31508008f": {
+    "id": "b9443692-7716-49a0-a0ac-c7d31508008f",
+    "username": "admin",
+    "email": "mezmure048@gmail.com",
+    "password_hash": "scrypt:32768:8:1$4ymupTr04Y5rvmvj$ed9b4330249358fac6c513f4b5a29c3004a79391881ba9c5f7d70b14a88ba48fd4ec5a9ece8d8380f52cf10b5f643ef563bae30660b0f7f275024df501dcb5b4",
+    "first_name": "Admin",
+    "last_name": "User",
+    "created_at": "2025-09-03T05:34:10.713275",
+    "last_login": "",
+    "is_active": true,
+    "is_verified": true,
+    "is_admin": true,
+    "verification_token": "",
+    "status": "approved"
+  }
+}

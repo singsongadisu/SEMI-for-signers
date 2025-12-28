@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.title }} • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lesson-study-grid {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 40px;
+        margin-top: 40px;
+    }
+
+    .word-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 700px;
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+
+    .word-btn {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        color: #fff;
+        padding: 16px 20px;
+        border-radius: 12px;
+        text-align: left;
+        cursor: pointer;
+        transition: 0.3s;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .word-btn:hover,
+    .word-btn.active {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--accent-primary);
+        color: var(--accent-primary);
+    }
+
+    .study-viewer {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--glass-border);
+        display: flex;
+        flex-direction: column;
+        height: 700px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .viewer-hero {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10rem;
+    }
+
+    .viewer-footer {
+        padding: 32px;
+        background: var(--glass-bg);
+        border-top: 1px solid var(--glass-border);
+        text-align: center;
+    }
+
+    .mini-quiz-card {
+        margin-top: 60px;
+        padding: 40px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <h1 style="font-size: 2.5rem; margin: 0;">{{ category|capitalize }}</h1>
+                <span class="badge-vibrant" style="margin: 0;">Thematic Discovery</span>
+            </div>
+        </div>
+        <a href="{{ url_for('sign_lab_page') }}" class="btn btn-outline btn-small">
+            <i class="fas fa-chevron-left"></i> Change Topic
+        </a>
+    </div>
+
+    <div class="lesson-study-grid">
+        <!-- Word Picker -->
+        <div class="word-sidebar">
+            {% for w in words %}
+            <button class="word-btn" data-word="{{ w }}">
+                {{ w|capitalize }}
+                <i class="fas fa-play-circle" style="opacity: 0.4;"></i>
+            </button>
+            {% endfor %}
+        </div>
+
+        <!-- Main Viewer -->
+        <div class="study-viewer">
+            <div class="viewer-hero" id="activeSign">
+                <i class="fas fa-sign-language" style="opacity: 0.1;"></i>
+            </div>
+            <div class="viewer-footer">
+                <h2 id="activeLabel" style="margin-bottom: 8px; font-size: 2rem;">Select a word</h2>
+                <p style="color: var(--text-muted);">Watch the visual demonstration and repeat it 5 times.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Mini-Quiz -->
+    <div class="glass-card mini-quiz-card">
+        <span style="font-size: 2rem; margin-bottom: 16px; display: block;">🎯</span>
+        <h2>Knowledge Check</h2>
+        <p style="color: var(--text-muted); margin-bottom: 32px;">Quickly test what you just learned in this module.</p>
+        <button id="startMini" class="btn btn-primary" style="padding: 12px 40px;">Launch Quick Quiz</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const signArea = document.getElementById('activeSign');
+    const labelArea = document.getElementById('activeLabel');
+
+    document.querySelectorAll('.word-btn').forEach(btn => {
+        btn.onclick = async () => {
+            const word = btn.dataset.word;
+            document.querySelectorAll('.word-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            labelArea.textContent = word.toUpperCase();
+            signArea.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size: 4rem;"></i>';
+
+            try {
+                const res = await fetch('/lesson-word', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word })
+                });
+                const data = await res.json();
+
+                if (data.files && data.files.length) {
+                    signArea.innerHTML = `<img src="${data.files[0]}" style="max-height: 80%; width: auto; border-radius: 12px;">`;
+                } else {
+                    signArea.textContent = word.charAt(0).toUpperCase();
+                }
+            } catch (e) {
+                signArea.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+            }
+        };
+    });
+
+    document.getElementById('startMini').onclick = () => {
+        showNotifier('Synchronizing session data...', 'info');
+        setTimeout(() => {
+            window.location.href = "{{ url_for('quiz_page') }}";
+        }, 1000);
+    };
+</script>
+{% endblock %}

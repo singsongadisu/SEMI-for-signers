@@ -1,0 +1,864 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Lab Management • SEMI{% endblock %}
+
+{% block nav_links %}
+<a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+    <i class="fas fa-chart-pie"></i> Insights
+</a>
+<a href="{{ url_for('admin_users') }}" class="nav-link">
+    <i class="fas fa-users-cog"></i> Users
+</a>
+<a href="{{ url_for('admin_courses') }}" class="nav-link">
+    <i class="fas fa-layer-group"></i> Courses
+</a>
+<a href="{{ url_for('admin_lessons') }}" class="nav-link active">
+    <i class="fas fa-hand-sparkles"></i> Sign Lab
+</a>
+<a href="{{ url_for('admin_quizzes') }}" class="nav-link">
+    <i class="fas fa-vial"></i> Quizzes
+</a>
+<a href="{{ url_for('dashboard') }}" class="nav-link">
+    <i class="fas fa-user-circle"></i> Exit Admin
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lesson-categories-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 24px;
+        margin-top: 40px;
+    }
+
+    .category-card {
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .category-header {
+        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        padding: 24px;
+        position: relative;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .category-header::before {
+        content: '\f078';
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        position: absolute;
+        bottom: 24px;
+        right: 24px;
+        opacity: 0.5;
+        transition: transform 0.3s ease;
+    }
+
+    .expanded .category-header::before {
+        transform: rotate(180deg);
+    }
+
+    .category-icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+    }
+
+    .category-actions {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        display: flex;
+        gap: 8px;
+        z-index: 10;
+    }
+
+    .category-content {
+        padding: 0;
+        display: none;
+    }
+
+    .catalog-view,
+    .detail-view {
+        transition: all 0.4s ease;
+    }
+
+    .back-nav {
+        margin-bottom: 30px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.4s ease;
+    }
+
+    .back-nav.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .category-card {
+        cursor: pointer;
+        position: relative;
+    }
+
+    .category-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        border-color: var(--accent-primary);
+    }
+
+    .category-summary {
+        margin-top: 12px;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+        display: flex;
+        gap: 15px;
+    }
+
+    .lesson-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+
+    .lesson-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent-primary);
+    }
+
+    .lesson-info h4 {
+        margin: 0 0 4px 0;
+        font-size: 1rem;
+    }
+
+    .lesson-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .lesson-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .modal-tabs {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .modal-tab {
+        padding: 12px 20px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .modal-tab.active {
+        color: var(--accent-primary);
+        border-bottom-color: var(--accent-primary);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .step-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .step-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px;">
+        <div>
+            <span class="badge-vibrant">Academic Architect</span>
+            <h1 style="font-size: 2.5rem; margin-top: 8px;">Curriculum Builder</h1>
+            <p style="color: var(--text-muted);">Organize your course into chapters, weeks, and detailed lessons.</p>
+        </div>
+        <button onclick="openCategoryModal()" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Chapter/Section
+        </button>
+    </div>
+
+    <!-- View 1: Subject Catalog -->
+    <div id="catalogView" class="catalog-view">
+        <div class="lesson-categories-grid">
+            {% for category in categories %}
+            <div class="glass-card category-card" onclick="openAdminCategory('{{ category.id }}', event)"
+                data-aos="fade-up">
+                <div class="category-header"
+                    style="border-radius: 20px; height: 100%; display: flex; flex-direction: column;">
+                    <div class="category-actions">
+                        <button onclick="openCategoryModal(true, '{{ category.id }}')" class="btn btn-outline btn-small"
+                            style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: none;">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteCategory('{{ category.id }}', event)" class="btn btn-outline btn-small"
+                            style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: none; color: #ef4444;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="category-icon" style="font-size: 3.5rem;">{{ category.icon }}</div>
+                    <h3 style="color: #fff; margin: 15px 0 5px 0; font-size: 1.5rem;">{{ category.name }}</h3>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+                        <span
+                            style="font-size: 0.75rem; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 4px; color: rgba(255,255,255,0.9);">
+                            {% if category.course_id %}
+                            {% set parent_course = courses | selectattr('id', 'equalto', category.course_id) | first %}
+                            {{ parent_course.title if parent_course else 'Unassigned' }}
+                            {% else %}
+                            Unassigned
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="category-summary" style="margin-top: auto; padding-top: 20px;">
+                        {% set cat_lessons = lessons | selectattr('category_id', 'equalto', category.id) | list %}
+                        <span><i class="fas fa-book-open"></i> {{ cat_lessons|length }} Lessons</span>
+                        <span><i class="fas fa-signal"></i> {{ category.difficulty_level|title }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- View 2: Detailed Lesson Management -->
+    <div id="detailView" class="detail-view" style="display: none;">
+        <div id="backToCatalog" class="back-nav">
+            <button onclick="closeAdminCategory()" class="btn btn-outline"
+                style="border-radius: 50px; padding: 10px 25px;">
+                <i class="fas fa-arrow-left" style="margin-right: 10px;"></i> Back to Subjects
+            </button>
+        </div>
+
+        {% for category in categories %}
+        <div class="category-detail-panel" id="admin-cat-{{ category.id }}" style="display: none;">
+            <div
+                style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 35px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
+                <span style="font-size: 2.5rem;">{{ category.icon }}</span>
+                <h2 style="font-size: 2.2rem; margin: 0; color: #fff;">{{ category.name }}</h2>
+                <button onclick="openLessonModal('{{ category.id }}')" class="btn btn-primary btn-small"
+                    style="margin-left: auto;">
+                    <i class="fas fa-plus"></i> Add Lesson
+                </button>
+            </div>
+
+            <div class="lesson-categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));">
+                {% set category_lessons = lessons | selectattr('category_id', 'equalto', category.id) | list %}
+                {% if category_lessons %}
+                {% for lesson in category_lessons %}
+                <div class="glass-card lesson-item"
+                    style="flex-direction: column; align-items: flex-start; gap: 15px; padding: 25px;">
+                    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div class="lesson-info">
+                            <h4 style="font-size: 1.2rem; margin-bottom: 8px;">{{ lesson.title }}</h4>
+                            <div class="lesson-meta">
+                                <i class="far fa-clock"></i> {{ lesson.duration_minutes }} mins •
+                                <i class="fas fa-signal"></i> {{ lesson.difficulty_level }}
+                            </div>
+                        </div>
+                        <div class="lesson-actions">
+                            <button onclick="openLessonModal('{{ category.id }}', true, '{{ lesson.id }}')"
+                                class="btn btn-outline btn-small" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="manageSteps('{{ lesson.id }}')" class="btn btn-outline btn-small"
+                                title="Steps">
+                                <i class="fas fa-list"></i>
+                            </button>
+                            <button onclick="deleteLesson('{{ lesson.id }}')" class="btn btn-outline btn-small"
+                                style="color: #ef4444;" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin: 0;">{{
+                        lesson.description }}</p>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div
+                    style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-muted); background: rgba(255,255,255,0.02); border-radius: 20px;">
+                    <i class="fas fa-ghost fa-3x" style="margin-bottom: 20px; opacity: 0.3;"></i>
+                    <p>No lessons found in this section.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Chapter Modal (formerly Category) -->
+<div id="categoryModal" class="modal-overlay">
+    <div class="glass-card modal-card" style="max-width: 500px; width: 90%;">
+        <h3 id="categoryModalTitle" class="modal-title">New Chapter/Section</h3>
+        <form id="categoryForm" style="margin-top: 20px;">
+            <input type="hidden" id="categoryId">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Chapter/Section Title</label>
+                <input type="text" id="categoryName" class="form-input" required
+                    placeholder="e.g., Week 1: Introduction to Sign">
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Description</label>
+                <textarea id="categoryDescription" class="form-input" rows="3" required></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Icon (Emoji)</label>
+                    <input type="text" id="categoryIcon" class="form-input" required placeholder="👋">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Difficulty</label>
+                    <div class="custom-select-wrapper">
+                        <select id="categoryDifficulty" class="form-input" required>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Parent Course</label>
+                <div class="custom-select-wrapper">
+                    <select id="categoryCourse" class="form-input">
+                        <option value="">-- No Assigned Course --</option>
+                        {% for course in courses %}
+                        <option value="{{ course.id }}">{{ course.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button type="button" onclick="closeCategoryModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" id="saveCategoryBtn" class="btn btn-primary">Save Chapter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lesson Modal -->
+<div id="lessonModal" class="modal-overlay">
+    <div class="glass-card modal-card" style="max-width: 500px; width: 90%;">
+        <h3 id="lessonModalTitle" class="modal-title">New Lesson</h3>
+        <form id="lessonForm" style="margin-top: 20px;">
+            <input type="hidden" id="lessonId">
+            <input type="hidden" id="lessonCategoryId">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Lesson Title</label>
+                <input type="text" id="lessonTitle" class="form-input" required placeholder="e.g., Essential Greetings">
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Description</label>
+                <textarea id="lessonDescription" class="form-input" rows="3" required></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Duration (minutes)</label>
+                    <input type="number" id="lessonDuration" class="form-input" required min="1" value="15">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Difficulty</label>
+                    <div class="custom-select-wrapper">
+                        <select id="lessonDifficulty" class="form-input" required>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button type="button" onclick="closeLessonModal()" class="btn btn-outline">Cancel</button>
+                <button type="submit" id="saveLessonBtn" class="btn btn-primary">Save Lesson</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Steps Management Modal -->
+<div id="stepsModal" class="modal-overlay">
+    <div class="glass-card modal-card" style="max-width: 700px; width: 90%;">
+        <h3 id="stepsModalTitle" class="modal-title">Manage Lesson Steps</h3>
+        <input type="hidden" id="stepsLessonId">
+
+        <div style="margin: 20px 0;">
+            <button onclick="openStepForm()" class="btn btn-primary btn-small">
+                <i class="fas fa-plus"></i> Add Step
+            </button>
+        </div>
+
+        <div class="step-list" id="stepsList">
+            <!-- Steps will be loaded here -->
+        </div>
+
+        <div class="modal-actions" style="margin-top: 30px;">
+            <button type="button" onclick="closeStepsModal()" class="btn btn-outline">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Step Form Modal -->
+<div id="stepFormModal" class="modal-overlay">
+    <div class="glass-card modal-card" style="max-width: 500px; width: 90%;">
+        <h3 id="stepFormTitle" class="modal-title">New Step</h3>
+        <form id="stepForm" style="margin-top: 20px;">
+            <input type="hidden" id="stepId">
+            <input type="hidden" id="stepLessonId">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Step Title</label>
+                <input type="text" id="stepTitle" class="form-input" required placeholder="e.g., Wave Hello">
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Description</label>
+                <textarea id="stepDescription" class="form-input" rows="3" required></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Media / Content Path</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="stepContentUrl" class="form-input" required
+                        placeholder="/static/uploads/lessons/..." style="flex: 1;">
+                    <label for="fileUpload" class="btn btn-outline btn-small"
+                        style="cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 100px;">
+                        <i class="fas fa-upload" style="margin-right: 5px;"></i> Upload
+                    </label>
+                    <input type="file" id="fileUpload" style="display: none;" onchange="handleFileUpload(this)">
+                </div>
+                <small id="uploadStatus" style="color: var(--text-muted); font-size: 0.75rem;">Link a URL or upload a
+                    file (Video, PDF, Image)</small>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Display Mode</label>
+                <div class="custom-select-wrapper">
+                    <select id="stepContentType" class="form-input" required>
+                        <option value="video">🎥 Auto-playing Video/GIF</option>
+                        <option value="youtube">📺 YouTube Video</option>
+                        <option value="pdf">📄 Document / PDF Viewer</option>
+                        <option value="reading">📖 Focused Reading Block</option>
+                        <option value="image">🖼️ Static Image</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Transcript / Translation Text</label>
+                <textarea id="stepTranscript" class="form-input" rows="4"
+                    placeholder="Provide a translation or transcript for the student..."></textarea>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">This text will appear in the classroom's
+                    translation window.</small>
+            </div>
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button type="button" onclick="closeStepForm()" class="btn btn-outline">Cancel</button>
+                <button type="submit" id="saveStepBtn" class="btn btn-primary">Save Step</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="categoriesData" type="application/json">{{ categories|tojson|safe }}</script>
+<script id="lessonsData" type="application/json">{{ lessons|tojson|safe }}</script>
+
+<script>
+    const categoriesData = JSON.parse(document.getElementById('categoriesData').textContent);
+    const lessonsData = JSON.parse(document.getElementById('lessonsData').textContent);
+    let currentSteps = [];
+
+    function openAdminCategory(id, event) {
+        if (event.target.closest('.category-actions')) return;
+
+        const catalog = document.getElementById('catalogView');
+        const detail = document.getElementById('detailView');
+        const backNav = document.getElementById('backToCatalog');
+
+        catalog.style.display = 'none';
+        detail.style.display = 'block';
+        setTimeout(() => backNav.classList.add('show'), 10);
+
+        document.querySelectorAll('.category-detail-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('admin-cat-' + id).style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeAdminCategory() {
+        const catalog = document.getElementById('catalogView');
+        const detail = document.getElementById('detailView');
+        const backNav = document.getElementById('backToCatalog');
+
+        backNav.classList.remove('show');
+        setTimeout(() => {
+            detail.style.display = 'none';
+            catalog.style.display = 'block';
+        }, 300);
+    }
+
+    // File Upload Handler
+    async function handleFileUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const status = document.getElementById('uploadStatus');
+        const urlInput = document.getElementById('stepContentUrl');
+
+        status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Uploading ${file.name}...`;
+        status.style.color = 'var(--accent-primary)';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/admin/upload_content', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+            if (result.success) {
+                urlInput.value = result.url;
+                status.innerHTML = `<i class="fas fa-check-circle"></i> Upload successful!`;
+                status.style.color = '#10b981';
+
+                // Auto-detect type
+                const ext = file.name.split('.').pop().toLowerCase();
+                const typeSelect = document.getElementById('stepContentType');
+                if (ext === 'pdf') typeSelect.value = 'pdf';
+                else if (['mp4', 'mov', 'webm'].includes(ext)) typeSelect.value = 'video';
+                else if (['jpg', 'png', 'webp', 'jpeg'].includes(ext)) typeSelect.value = 'image';
+            } else {
+                status.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${result.message}`;
+                status.style.color = '#ef4444';
+            }
+        } catch (err) {
+            status.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Upload failed.`;
+            status.style.color = '#ef4444';
+        }
+    }
+
+    // Category Management
+    function openCategoryModal(edit = false, id = null) {
+        if (edit && id) {
+            const category = categoriesData.find(c => c.id === id);
+            if (category) {
+                document.getElementById('categoryId').value = category.id;
+                document.getElementById('categoryName').value = category.name;
+                document.getElementById('categoryDescription').value = category.description;
+                document.getElementById('categoryIcon').value = category.icon;
+                document.getElementById('categoryDifficulty').value = category.difficulty_level;
+                document.getElementById('categoryCourse').value = category.course_id || '';
+                document.getElementById('categoryModalTitle').textContent = 'Edit Category';
+            }
+        } else {
+            document.getElementById('categoryForm').reset();
+            document.getElementById('categoryId').value = '';
+            document.getElementById('categoryModalTitle').textContent = 'New Category';
+        }
+        document.getElementById('categoryModal').classList.add('active');
+    }
+
+    function closeCategoryModal() {
+        document.getElementById('categoryModal').classList.remove('active');
+    }
+
+    document.getElementById('categoryForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('categoryId').value;
+        const endpoint = id ? `/admin/edit_lesson_category/${id}` : '/admin/add_lesson_category';
+
+        const data = {
+            name: document.getElementById('categoryName').value,
+            description: document.getElementById('categoryDescription').value,
+            icon: document.getElementById('categoryIcon').value,
+            difficulty_level: document.getElementById('categoryDifficulty').value,
+            course_id: document.getElementById('categoryCourse').value
+        };
+
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotifier(result.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotifier(result.message, 'error');
+            }
+        } catch (err) {
+            showNotifier('Failed to save category', 'error');
+        }
+    };
+
+    function deleteCategory(id, event) {
+        if (event) event.stopPropagation();
+        showConfirm('Delete Category', 'Are you sure? All lessons in this category will also be deleted.', async (confirmed) => {
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`/admin/delete_lesson_category/${id}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showNotifier(result.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showNotifier('Delete failed', 'error');
+                }
+            } catch (e) {
+                showNotifier('Error deleting category', 'error');
+            }
+        });
+    }
+
+    // Lesson Management
+    function openLessonModal(categoryId, edit = false, lessonId = null) {
+        document.getElementById('lessonCategoryId').value = categoryId;
+
+        if (edit && lessonId) {
+            const lesson = lessonsData.find(l => l.id === lessonId);
+            if (lesson) {
+                document.getElementById('lessonId').value = lesson.id;
+                document.getElementById('lessonTitle').value = lesson.title;
+                document.getElementById('lessonDescription').value = lesson.description;
+                document.getElementById('lessonDuration').value = lesson.duration_minutes;
+                document.getElementById('lessonDifficulty').value = lesson.difficulty_level;
+                document.getElementById('lessonModalTitle').textContent = 'Edit Lesson';
+            }
+        } else {
+            document.getElementById('lessonForm').reset();
+            document.getElementById('lessonId').value = '';
+            document.getElementById('lessonCategoryId').value = categoryId;
+            document.getElementById('lessonModalTitle').textContent = 'New Lesson';
+        }
+        document.getElementById('lessonModal').classList.add('active');
+    }
+
+    function closeLessonModal() {
+        document.getElementById('lessonModal').classList.remove('active');
+    }
+
+    document.getElementById('lessonForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('lessonId').value;
+        const endpoint = id ? `/admin/edit_lesson/${id}` : '/admin/add_lesson';
+
+        const data = {
+            category_id: document.getElementById('lessonCategoryId').value,
+            title: document.getElementById('lessonTitle').value,
+            description: document.getElementById('lessonDescription').value,
+            duration_minutes: document.getElementById('lessonDuration').value,
+            difficulty_level: document.getElementById('lessonDifficulty').value
+        };
+
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotifier(result.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotifier(result.message, 'error');
+            }
+        } catch (err) {
+            showNotifier('Failed to save lesson', 'error');
+        }
+    };
+
+    function deleteLesson(id) {
+        showConfirm('Delete Lesson', 'Are you sure? All steps in this lesson will also be deleted.', async (confirmed) => {
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`/admin/delete_lesson/${id}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showNotifier(result.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showNotifier('Delete failed', 'error');
+                }
+            } catch (e) {
+                showNotifier('Error deleting lesson', 'error');
+            }
+        });
+    }
+
+    // Steps Management
+    async function manageSteps(lessonId) {
+        document.getElementById('stepsLessonId').value = lessonId;
+        const lesson = lessonsData.find(l => l.id === lessonId);
+        document.getElementById('stepsModalTitle').textContent = `Manage Steps: ${lesson.title}`;
+
+        // Load steps
+        try {
+            const res = await fetch(`/admin/get_lesson_steps/${lessonId}`);
+            const result = await res.json();
+            if (result.success) {
+                currentSteps = result.steps;
+                renderSteps();
+            }
+        } catch (e) {
+            showNotifier('Failed to load steps', 'error');
+        }
+
+        document.getElementById('stepsModal').classList.add('active');
+    }
+
+    function closeStepsModal() {
+        document.getElementById('stepsModal').classList.remove('active');
+    }
+
+    function renderSteps() {
+        const container = document.getElementById('stepsList');
+        if (currentSteps.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">No steps yet</p>';
+            return;
+        }
+
+        container.innerHTML = currentSteps.map(step => `
+            <div class="step-item">
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 0.9rem;">${step.title}</h4>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">${step.description.substring(0, 60)}...</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="editStep('${step.id}')" class="btn btn-outline btn-small" style="padding: 6px 10px;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteStep('${step.id}')" class="btn btn-outline btn-small" style="padding: 6px 10px; color: #ef4444;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function openStepForm(stepId = null) {
+        const lessonId = document.getElementById('stepsLessonId').value;
+        document.getElementById('stepLessonId').value = lessonId;
+
+        if (stepId) {
+            const step = currentSteps.find(s => s.id === stepId);
+            if (step) {
+                document.getElementById('stepId').value = step.id;
+                document.getElementById('stepTitle').value = step.title;
+                document.getElementById('stepDescription').value = step.description;
+                document.getElementById('stepContentUrl').value = step.content_url;
+                document.getElementById('stepContentType').value = step.content_type;
+                document.getElementById('stepTranscript').value = step.transcript || '';
+                document.getElementById('stepFormTitle').textContent = 'Edit Step';
+            }
+        } else {
+            document.getElementById('stepForm').reset();
+            document.getElementById('stepId').value = '';
+            document.getElementById('stepLessonId').value = lessonId;
+            document.getElementById('stepFormTitle').textContent = 'New Step';
+        }
+        document.getElementById('stepFormModal').classList.add('active');
+    }
+
+    function closeStepForm() {
+        document.getElementById('stepFormModal').classList.remove('active');
+    }
+
+    function editStep(stepId) {
+        openStepForm(stepId);
+    }
+
+    document.getElementById('stepForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('stepId').value;
+        const endpoint = id ? `/admin/edit_lesson_step/${id}` : '/admin/add_lesson_step';
+
+        const data = {
+            lesson_id: document.getElementById('stepLessonId').value,
+            title: document.getElementById('stepTitle').value,
+            description: document.getElementById('stepDescription').value,
+            content_url: document.getElementById('stepContentUrl').value,
+            content_type: document.getElementById('stepContentType').value,
+            transcript: document.getElementById('stepTranscript').value
+        };
+
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotifier(result.message, 'success');
+                closeStepForm();
+                // Reload steps
+                const lessonId = document.getElementById('stepsLessonId').value;
+                const stepsRes = await fetch(`/admin/get_lesson_steps/${lessonId}`);
+                const stepsResult = await stepsRes.json();
+                if (stepsResult.success) {
+                    currentSteps = stepsResult.steps;
+                    renderSteps();
+                }
+            } else {
+                showNotifier(result.message, 'error');
+            }
+        } catch (err) {
+            showNotifier('Failed to save step', 'error');
+        }
+    };
+
+    async function deleteStep(stepId) {
+        showConfirm('Delete Step', 'Are you sure you want to delete this step?', async (confirmed) => {
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`/admin/delete_lesson_step/${stepId}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showNotifier(result.message, 'success');
+                    // Reload steps
+                    const lessonId = document.getElementById('stepsLessonId').value;
+                    const stepsRes = await fetch(`/admin/get_lesson_steps/${lessonId}`);
+                    const stepsResult = await stepsRes.json();
+                    if (stepsResult.success) {
+                        currentSteps = stepsResult.steps;
+                        renderSteps();
+                    }
+                } else {
+                    showNotifier('Delete failed', 'error');
+                }
+            } catch (e) {
+                showNotifier('Error deleting step', 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}

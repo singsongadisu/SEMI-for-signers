@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}User Feedback • Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .feedback-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        margin-top: 30px;
+    }
+
+    .feedback-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .feedback-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--accent-primary);
+        box-shadow: 0 10px 30px rgba(0, 242, 254, 0.1);
+    }
+
+    .feedback-card.is-read {
+        opacity: 0.7;
+    }
+
+    .feedback-card.is-read:hover {
+        opacity: 1;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .category-badge {
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .cat-Experience {
+        background: rgba(0, 242, 254, 0.1);
+        color: var(--accent-primary);
+    }
+
+    .cat-Technical {
+        background: rgba(244, 63, 94, 0.1);
+        color: #f43f5e;
+    }
+
+    .cat-Content {
+        background: rgba(162, 89, 255, 0.1);
+        color: var(--accent-secondary);
+    }
+
+    .cat-Translation {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .cat-Other {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-muted);
+    }
+
+    .rating-stars {
+        color: #ffb800;
+        font-size: 0.85rem;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .mark-read-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .mark-read-btn:hover {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: #10b981;
+        color: #10b981;
+    }
+
+    .feedback-empty {
+        text-align: center;
+        padding: 100px 20px;
+        color: var(--text-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <div>
+            <h1 style="font-size: 2.5rem; margin-bottom: 8px;">User Insights</h1>
+            <p style="color: var(--text-muted);">Intercepting transmissions from the user ecosystem.</p>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Hub
+        </a>
+    </div>
+
+    {% if feedbacks %}
+    <div class="feedback-grid">
+        {% for fb in feedbacks %}
+        <div class="glass-card feedback-card {% if fb.is_read %}is-read{% endif %}" id="fb-{{ fb.id }}"
+            data-aos="fade-up">
+            <div class="card-header">
+                <span class="category-badge cat-{{ fb.category }}">{{ fb.category }}</span>
+                <div class="rating-stars">
+                    {% for i in range(fb.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                    {% for i in range(5 - fb.rating) %}<i class="far fa-star"></i>{% endfor %}
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 10px; color: #fff;">{{ fb.subject }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6;">{{ fb.message }}</p>
+
+            <div class="user-info">
+                <div style="flex-grow: 1;">
+                    <i class="fas fa-user-circle"></i> {{ fb.username }} •
+                    <span style="font-size: 0.8rem;">{{ fb.created_at.strftime('%b %d, %H:%M') }}</span>
+                </div>
+                {% if not fb.is_read %}
+                <button class="mark-read-btn" onclick="markRead('{{ fb.id }}')">
+                    Mark as Read
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass-card feedback-empty" data-aos="zoom-in">
+        <i class="fas fa-comment-slash" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;"></i>
+        <h2>Frequency Silence</h2>
+        <p>No user feedback has been transmitted yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function markRead(feedbackId) {
+        try {
+            const response = await fetch(`/admin/feedback/read/${feedbackId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                const card = document.getElementById(`fb-${feedbackId}`);
+                card.classList.add('is-read');
+                // Remove the button
+                card.querySelector('.mark-read-btn').remove();
+                showNotifier('Feedback marked as processed.', 'success');
+            } else {
+                showNotifier(data.message || 'Transmission failed.', 'error');
+            }
+        } catch (error) {
+            showNotifier('Connection lost in the void.', 'error');
+        }
+    }
+</script>
+{% endblock %}

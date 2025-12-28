@@ -1,0 +1,990 @@
+{% extends "base.html" %}
+
+{% block title %}ASL Translator • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .translator-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 40px;
+        margin-top: 40px;
+    }
+
+    @media (max-width: 968px) {
+        .translator-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        .section-header h1 {
+            font-size: 2.2rem !important;
+        }
+    }
+
+    .input-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .form-textarea {
+        min-height: 200px;
+        resize: vertical;
+    }
+
+    @media (max-width: 768px) {
+        .form-textarea {
+            min-height: 120px;
+        }
+    }
+
+    .output-panel {
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+        .output-panel {
+            min-height: 300px;
+        }
+
+        .sign-player-container {
+            border-radius: 16px;
+        }
+    }
+
+    .sign-player-container {
+        flex-grow: 1;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .sign-display-frame {
+        flex-grow: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at center, rgba(79, 172, 254, 0.05) 0%, transparent 70%);
+    }
+
+    .sign-visual-block {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transform: scale(0.95);
+        padding: 40px;
+        overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+        .sign-visual-block {
+            padding: 20px;
+            gap: 8px;
+        }
+    }
+
+    .sign-visual-block.active {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .sign-img-unit {
+        max-width: 80%;
+        max-height: 85%;
+        border-radius: 16px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+        transition: transform 0.3s;
+    }
+
+    .sign-visual-block:not(.single-asset) .sign-img-unit {
+        max-width: 20%;
+    }
+
+    .player-controls {
+        background: rgba(255, 255, 255, 0.03);
+        border-top: 1px solid var(--glass-border);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    @media (max-width: 600px) {
+        .player-controls {
+            flex-direction: column;
+            padding: 12px;
+            gap: 12px;
+        }
+
+        .player-controls>div {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .playback-timeline {
+            order: 2;
+        }
+
+        .playback-speed-group {
+            order: 1;
+            display: flex;
+            width: 100%;
+            gap: 10px;
+        }
+
+        .speed-selector {
+            flex-grow: 1;
+        }
+    }
+
+    .playback-timeline {
+        flex-grow: 1;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        scrollbar-width: thin;
+    }
+
+    .timeline-item {
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--text-muted);
+        transition: 0.3s;
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .timeline-item.active {
+        background: rgba(0, 242, 254, 0.1);
+        color: var(--accent-primary);
+        border-color: rgba(0, 242, 254, 0.3);
+        transform: scale(1.05);
+    }
+
+    .speed-selector {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--glass-border);
+        color: #fff;
+        border-radius: 8px;
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        outline: none;
+    }
+
+    .play-state-indicator {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--accent-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .recent-card {
+            padding: 16px !important;
+        }
+
+        .recent-item {
+            padding: 10px !important;
+            font-size: 0.85rem;
+        }
+    }
+
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--accent-primary);
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: scale(1.2);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+    }
+
+    /* --- Cinematic Overlay (Mobile) --- */
+    .cinema-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: rgba(5, 5, 16, 0.95);
+        backdrop-filter: blur(30px);
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+        padding: 40px 20px;
+    }
+
+    .cinema-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .cinema-display-frame {
+        width: 100%;
+        height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .cinema-close-btn {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        font-size: 1.5rem;
+        color: rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+        transition: 0.3s;
+        z-index: 10010;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .cinema-close-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .cinema-status {
+        margin-top: 40px;
+        text-align: center;
+    }
+
+    .cinema-word-label {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--accent-primary);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-top: 20px;
+    }
+
+    .cinema-overlay .sign-img-unit {
+        max-width: 90% !important;
+        max-height: 90% !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    }
+
+    .cinema-overlay .sign-visual-block:not(.single-asset) .sign-img-unit {
+        max-width: 40% !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cinema-overlay" id="cinemaOverlay">
+    <div class="cinema-close-btn" onclick="closeCinemaOverlay()"><i class="fas fa-times"></i></div>
+
+    <div class="cinema-display-frame" id="cinemaDisplayFrame">
+        <!-- Re-using sign-visual-blocks here dynamically -->
+    </div>
+
+    <div class="cinema-status">
+        <div class="cinema-word-label" id="cinemaWordLabel">TRANSLATING...</div>
+        <div style="margin-top: 12px; color: var(--text-muted); font-size: 0.8rem; letter-spacing: 3px;">
+            CINEMATIC TRANSLATION SEQUENCE
+        </div>
+    </div>
+</div>
+
+<div class="container" style="padding-top: 20px;">
+    <div class="section-header">
+        <div
+            style="display: flex; align-items: center; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px;">
+            <h1 style="font-size: 3rem; margin: 0;">ASL Translator</h1>
+            <span class="badge-vibrant" style="margin: 0;">Real-time Visualization</span>
+        </div>
+        <p style="color: var(--text-muted); max-width: 600px;">Convert spoken or written English into clear, visual
+            American Sign Language demonstrations.</p>
+    </div>
+
+    <div class="translator-grid">
+        <!-- Input Panel -->
+        <div class="input-panel">
+            <div class="glass-card">
+                <!-- Language Selector -->
+                <div
+                    style="margin-bottom: 20px; padding: 12px; background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 12px;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fas fa-language" style="color: var(--accent-primary); font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.95rem;">Translation Language</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Select sign
+                                    language system</div>
+                            </div>
+                        </div>
+                        <div
+                            style="display: flex; gap: 8px; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 8px;">
+                            <button id="langEnglish" class="lang-toggle-btn active" data-lang="english"
+                                style="padding: 8px 16px; border: none; background: linear-gradient(135deg, #00f2fe, #4facfe); color: #020617; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.3s; font-size: 0.85rem;">
+                                🇺🇸 English (ASL)
+                            </button>
+                            <button id="langAmharic" class="lang-toggle-btn" data-lang="amharic"
+                                style="padding: 8px 16px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.3s; font-size: 0.85rem;">
+                                🇪🇹 አማርኛ (ESL)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-card">
+                <div class="form-group">
+                    <label for="inputText" class="form-label">
+                        <span>Enter English Text</span>
+                        <span
+                            style="color: var(--text-muted); font-size: 0.85rem; font-weight: 400; margin-left: 12px;">or
+                            use voice input below</span>
+                    </label>
+                    <textarea id="inputText" class="form-input form-textarea"
+                        placeholder="Type something like 'Welcome to SEMI' or click the microphone to speak..."
+                        maxlength="500"></textarea>
+                </div>
+
+                <!-- Voice Input Section -->
+                <div id="voiceInputSection"
+                    style="margin-top: 16px; padding: 16px; background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 12px;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fas fa-microphone" style="color: var(--accent-primary); font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.95rem;">Voice to Sign</div>
+                                <div id="voiceStatus"
+                                    style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Ready to
+                                    listen</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button id="startVoiceBtn" class="btn btn-primary btn-small" style="white-space: nowrap;">
+                                <i class="fas fa-microphone"></i> Start Speaking
+                            </button>
+                            <button id="stopVoiceBtn" class="btn btn-outline btn-small"
+                                style="display: none; white-space: nowrap;">
+                                <i class="fas fa-stop"></i> Stop
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Transcript Display -->
+                    <div id="liveTranscript"
+                        style="display: none; margin-top: 16px; padding: 12px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; border-left: 3px solid var(--accent-primary);">
+                        <div
+                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-primary); margin-bottom: 8px;">
+                            <i class="fas fa-circle" style="font-size: 0.5rem; animation: pulse 1.5s infinite;"></i>
+                            LIVE TRANSCRIPT
+                        </div>
+                        <div id="transcriptContent"
+                            style="font-size: 0.95rem; line-height: 1.6; min-height: 24px; color: #fff;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 16px; margin-top: 16px;">
+                    <button id="translateBtn" class="btn btn-primary" style="flex-grow: 1; justify-content: center;">
+                        <i class="fas fa-sign-language"></i> Translate to ASL
+                    </button>
+                    <button id="clearBtn" class="btn btn-outline">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card" style="padding: 24px;">
+                <h4 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-history" style="color: var(--accent-secondary);"></i> Recent
+                </h4>
+                <div id="recentList" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">
+                        No recent translations
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="output-panel">
+            <div class="sign-player-container">
+                <div class="play-state-indicator" id="playbackStatus" style="display: none;">
+                    <div class="pulse-dot"></div>
+                    Transmitting Sequence
+                </div>
+
+                <div class="sign-display-frame" id="signDisplay">
+                    <div class="placeholder-content">
+                        <i class="fas fa-sign-language"></i>
+                        <p>Initiate text transmission to visualize ASL sequence</p>
+                    </div>
+                </div>
+
+                <div class="player-controls" id="playerControls" style="display: none;">
+                    <div class="playback-timeline" id="playbackTimeline">
+                        <!-- Timeline items injected here -->
+                    </div>
+
+                    <div class="playback-speed-group">
+                        <div class="custom-select-wrapper" style="min-width: 140px;">
+                            <select class="speed-selector form-input" id="playbackSpeed"
+                                style="padding: 10px 40px 10px 15px !important; height: auto;">
+                                <option value="1500">0.5x (Study)</option>
+                                <option value="1000" selected>1.0x (Normal)</option>
+                                <option value="700">1.5x (Fluent)</option>
+                                <option value="500">2.0x (Rapid)</option>
+                            </select>
+                        </div>
+                        <button id="replayBtn" class="btn btn-outline btn-small" title="Replay Sequence"
+                            style="white-space: nowrap; height: 100%;">
+                            <i class="fas fa-redo"></i> Replay
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultsActions" style="display: none; gap: 16px; justify-content: flex-end;">
+                <button id="favoriteBtn" class="btn btn-outline btn-small">
+                    <i class="far fa-star"></i> Save to Favorites
+                </button>
+                <button id="shareBtn" class="btn btn-outline btn-small">
+                    <i class="fas fa-share-alt"></i> Share Neural Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputText = document.getElementById('inputText');
+        const translateBtn = document.getElementById('translateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const signDisplay = document.getElementById('signDisplay');
+        let lastTranslationId = null;
+        let wordBlocks = []; // Grouped units
+        let playbackInterval = null;
+        let currentIndex = -1;
+
+        // Language Selection
+        let selectedLanguage = 'english'; // default
+        const langEnglishBtn = document.getElementById('langEnglish');
+        const langAmharicBtn = document.getElementById('langAmharic');
+
+        // Language Toggle Handlers
+        function setLanguage(lang) {
+            selectedLanguage = lang;
+
+            // Update button styles
+            document.querySelectorAll('.lang-toggle-btn').forEach(btn => {
+                if (btn.dataset.lang === lang) {
+                    btn.style.background = 'linear-gradient(135deg, #00f2fe, #4facfe)';
+                    btn.style.color = '#020617';
+                    btn.classList.add('active');
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--text-muted)';
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update placeholder text
+            if (lang === 'amharic') {
+                inputText.placeholder = 'በአማርኛ ይጻፉ ወይም ይናገሩ...';
+                document.querySelector('.form-label span').textContent = 'በአማርኛ ጽሑፍ ያስገቡ';
+            } else {
+                inputText.placeholder = 'Type something like "Welcome to SEMI" or click the microphone to speak...';
+                document.querySelector('.form-label span').textContent = 'Enter English Text';
+            }
+
+            // Update voice recognition language if active
+            if (recognition && isListening) {
+                stopVoiceRecognition();
+                setTimeout(() => {
+                    recognition.lang = lang === 'amharic' ? 'am-ET' : 'en-US';
+                    startVoiceBtn.click(); // Restart with new language
+                }, 300);
+            } else if (recognition) {
+                recognition.lang = lang === 'amharic' ? 'am-ET' : 'en-US';
+            }
+
+            console.log(`🌍 Language switched to: ${lang}`);
+        }
+
+        langEnglishBtn.addEventListener('click', () => setLanguage('english'));
+        langAmharicBtn.addEventListener('click', () => setLanguage('amharic'));
+
+        // Voice Recognition Variables
+        let recognition = null;
+        let isListening = false;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        const startVoiceBtn = document.getElementById('startVoiceBtn');
+        const stopVoiceBtn = document.getElementById('stopVoiceBtn');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const liveTranscript = document.getElementById('liveTranscript');
+        const transcriptContent = document.getElementById('transcriptContent');
+        let autoTranslateTimeout = null;
+
+        // Initialize Web Speech API
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; // Keep listening continuously
+            recognition.interimResults = true; // Show results as user speaks
+            recognition.lang = 'en-US'; // English (will add Amharic later)
+            recognition.maxAlternatives = 1;
+
+            // Voice Recognition Event Handlers
+            recognition.onstart = function () {
+                isListening = true;
+                startVoiceBtn.style.display = 'none';
+                stopVoiceBtn.style.display = 'inline-flex';
+                liveTranscript.style.display = 'block';
+                voiceStatus.innerHTML = '<i class="fas fa-circle" style="color: #10b981; font-size: 0.5rem; animation: pulse 1.5s infinite;"></i> Listening...';
+                voiceStatus.style.color = '#10b981';
+                console.log('🎤 Voice recognition started');
+            };
+
+            recognition.onresult = function (event) {
+                interimTranscript = '';
+
+                // Process all results
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                        console.log('✅ Final:', transcript);
+
+                        // Update input text with final transcript
+                        inputText.value = finalTranscript.trim();
+
+                        // Auto-translate after 1.5 seconds of final speech
+                        clearTimeout(autoTranslateTimeout);
+                        autoTranslateTimeout = setTimeout(() => {
+                            if (finalTranscript.trim()) {
+                                console.log('🔄 Auto-translating:', finalTranscript.trim());
+                                translateBtn.click();
+                            }
+                        }, 1500);
+
+                    } else {
+                        interimTranscript += transcript;
+                        console.log('⏳ Interim:', transcript);
+                    }
+                }
+
+                // Display live transcript (final + interim)
+                const displayText = finalTranscript + (interimTranscript ? `<span style="opacity: 0.6; font-style: italic;">${interimTranscript}</span>` : '');
+                transcriptContent.innerHTML = displayText || '<span style="opacity: 0.5;">Speak now...</span>';
+            };
+
+            recognition.onerror = function (event) {
+                console.error('❌ Speech recognition error:', event.error);
+                let errorMsg = 'Recognition error';
+
+                switch (event.error) {
+                    case 'no-speech':
+                        errorMsg = 'No speech detected. Try again.';
+                        break;
+                    case 'audio-capture':
+                        errorMsg = 'No microphone found. Check permissions.';
+                        break;
+                    case 'not-allowed':
+                        errorMsg = 'Microphone access denied. Enable in browser settings.';
+                        break;
+                    case 'network':
+                        errorMsg = 'Network error. Check connection.';
+                        break;
+                    default:
+                        errorMsg = `Error: ${event.error}`;
+                }
+
+                voiceStatus.textContent = errorMsg;
+                voiceStatus.style.color = '#ef4444';
+                showNotifier(errorMsg, 'error');
+
+                // Don't auto-stop on no-speech, let it continue
+                if (event.error !== 'no-speech') {
+                    stopVoiceRecognition();
+                }
+            };
+
+            recognition.onend = function () {
+                console.log('🛑 Voice recognition ended');
+
+                // If still listening, restart (for continuous mode)
+                if (isListening) {
+                    try {
+                        recognition.start();
+                        console.log('🔄 Restarting recognition...');
+                    } catch (e) {
+                        console.log('Could not restart:', e);
+                        stopVoiceRecognition();
+                    }
+                }
+            };
+
+            // Start Voice Button
+            startVoiceBtn.addEventListener('click', function () {
+                try {
+                    finalTranscript = '';
+                    interimTranscript = '';
+                    inputText.value = '';
+                    transcriptContent.innerHTML = '<span style="opacity: 0.5;">Speak now...</span>';
+                    recognition.start();
+                    showNotifier('Voice recognition started. Speak now!', 'success');
+                } catch (error) {
+                    console.error('Error starting recognition:', error);
+                    showNotifier('Could not start voice recognition', 'error');
+                }
+            });
+
+            // Stop Voice Button
+            stopVoiceBtn.addEventListener('click', function () {
+                stopVoiceRecognition();
+            });
+
+        } else {
+            // Browser doesn't support Web Speech API
+            startVoiceBtn.disabled = true;
+            startVoiceBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Not Supported';
+            voiceStatus.textContent = 'Voice recognition not supported in this browser';
+            voiceStatus.style.color = '#ef4444';
+            console.warn('⚠️ Web Speech API not supported');
+        }
+
+        function stopVoiceRecognition() {
+            isListening = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            startVoiceBtn.style.display = 'inline-flex';
+            stopVoiceBtn.style.display = 'none';
+            voiceStatus.innerHTML = 'Ready to listen';
+            voiceStatus.style.color = 'var(--text-muted)';
+            clearTimeout(autoTranslateTimeout);
+
+            // If we have transcript, show completion message
+            if (finalTranscript.trim()) {
+                showNotifier('Voice input captured successfully', 'success');
+            }
+        }
+
+        translateBtn.addEventListener('click', async () => {
+            const text = inputText.value.trim();
+            if (!text) return;
+
+            // Loading state
+            translateBtn.disabled = true;
+            translateBtn.innerHTML = '<i class="fas fa-sign-language fa-spin"></i> Synchronizing...';
+            signDisplay.innerHTML = '<div class="placeholder-content"><i class="fas fa-circle-notch fa-spin"></i><p>Materializing visualization sequence...</p></div>';
+            playerControls.style.display = 'none';
+
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        language: selectedLanguage // Send selected language
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    groupAssetsIntoBlocks(data.sign_assets);
+                    lastTranslationId = data.translation_id;
+                    resultsActions.style.display = 'flex';
+                    playerControls.style.display = 'flex';
+
+                    addToHistory(text);
+                    showNotifier('Neural pathway established.', 'success');
+                    startPlayback();
+                } else {
+                    showNotifier(data.message || 'Transmission failed.', 'error');
+                    resetPlaceholder();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotifier('Neural bridge collapsed.', 'error');
+                resetPlaceholder();
+            } finally {
+                translateBtn.disabled = false;
+                translateBtn.innerHTML = '<i class="fas fa-sign-language"></i> Translate to ASL';
+            }
+        });
+
+        function groupAssetsIntoBlocks(assets) {
+            wordBlocks = [];
+            let currentBlock = [];
+            let currentWordLabel = "";
+
+            assets.forEach((asset, idx) => {
+                if (asset.type === 'break') {
+                    if (currentBlock.length > 0) {
+                        wordBlocks.push({ label: currentWordLabel, assets: [...currentBlock] });
+                        currentBlock = [];
+                        currentWordLabel = "";
+                    }
+                } else if (asset.type === 'word') {
+                    // If we have a pending fingerspelled block, push it first
+                    if (currentBlock.length > 0) {
+                        wordBlocks.push({ label: currentWordLabel, assets: [...currentBlock] });
+                        currentBlock = [];
+                        currentWordLabel = "";
+                    }
+                    wordBlocks.push({ label: asset.word, assets: [asset] });
+                } else {
+                    // Character asset
+                    currentBlock.push(asset);
+                    currentWordLabel += asset.char;
+                }
+            });
+
+            // Push final block
+            if (currentBlock.length > 0) {
+                wordBlocks.push({ label: currentWordLabel, assets: [...currentBlock] });
+            }
+        }
+
+        function startPlayback() {
+            stopPlayback();
+
+            const isMobile = window.innerWidth <= 768;
+            const timeline = document.getElementById('playbackTimeline');
+            const cinemaOverlay = document.getElementById('cinemaOverlay');
+            const cinemaFrame = document.getElementById('cinemaDisplayFrame');
+
+            timeline.innerHTML = '';
+            signDisplay.innerHTML = '';
+            cinemaFrame.innerHTML = '';
+            document.getElementById('playbackStatus').style.display = 'flex';
+
+            if (isMobile) {
+                cinemaOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent scroll
+            }
+
+            wordBlocks.forEach((block, idx) => {
+                // Create Block Container (Unit)
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'sign-visual-block';
+                if (block.assets.length === 1) blockDiv.classList.add('single-asset');
+                blockDiv.id = `block-${idx}`;
+
+                block.assets.forEach(asset => {
+                    const img = document.createElement('img');
+                    img.src = asset.url;
+                    img.className = 'sign-img-unit';
+
+                    // Dynamic scaling based on letter count
+                    if (block.assets.length > 5) {
+                        img.style.maxWidth = `${Math.floor(90 / Math.ceil(block.assets.length / 2))}%`;
+                        img.style.maxHeight = '40%';
+                    } else if (block.assets.length > 1) {
+                        img.style.maxWidth = `${Math.floor(90 / block.assets.length)}%`;
+                    }
+
+                    blockDiv.appendChild(img);
+                });
+
+                // Inject into BOTH possible displays (active one will show via CSS)
+                signDisplay.appendChild(blockDiv);
+                cinemaFrame.appendChild(blockDiv.cloneNode(true));
+
+                // Create timeline item for the whole word
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                item.textContent = block.label;
+                item.onclick = () => jumpToBlock(idx);
+                timeline.appendChild(item);
+            });
+
+            currentIndex = 0;
+            runPlaybackLoop();
+        }
+
+        function runPlaybackLoop() {
+            if (currentIndex >= wordBlocks.length) {
+                document.getElementById('playbackStatus').style.display = 'none';
+
+                // Magic Auto-Close for mobile
+                if (window.innerWidth <= 768) {
+                    setTimeout(closeCinemaOverlay, 1500);
+                }
+                return;
+            }
+
+            const speed = parseInt(document.getElementById('playbackSpeed').value);
+            updateActiveBlock(currentIndex);
+
+            playbackInterval = setTimeout(() => {
+                currentIndex++;
+                runPlaybackLoop();
+            }, speed);
+        }
+
+        function updateActiveBlock(index) {
+            // Update visuals (handles both in-page and cinema displays)
+            document.querySelectorAll('.sign-visual-block').forEach(b => {
+                const idNum = b.id.split('-')[1];
+                if (idNum == index) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+
+            // Update Label in Cinema
+            if (wordBlocks[index]) {
+                document.getElementById('cinemaWordLabel').textContent = wordBlocks[index].label;
+            }
+
+            // Update timeline
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            timelineItems.forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('active');
+                    item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        function closeCinemaOverlay() {
+            const overlay = document.getElementById('cinemaOverlay');
+            overlay.classList.remove('active');
+            document.body.style.overflow = 'auto';
+            stopPlayback();
+        }
+
+        window.closeCinemaOverlay = closeCinemaOverlay; // Make globally accessible for onclick
+
+        function stopPlayback() {
+            if (playbackInterval) clearTimeout(playbackInterval);
+            document.getElementById('playbackStatus').style.display = 'none';
+        }
+
+        function jumpToBlock(index) {
+            stopPlayback();
+            currentIndex = index;
+            updateActiveBlock(currentIndex);
+        }
+
+        document.getElementById('replayBtn').addEventListener('click', () => {
+            if (wordBlocks.length > 0) startPlayback();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            inputText.value = '';
+            stopPlayback();
+            resetPlaceholder();
+            resultsActions.style.display = 'none';
+            playerControls.style.display = 'none';
+
+            // Stop voice recognition and reset
+            if (isListening) {
+                stopVoiceRecognition();
+            }
+            finalTranscript = '';
+            interimTranscript = '';
+            liveTranscript.style.display = 'none';
+            transcriptContent.innerHTML = '';
+        });
+
+        function resetPlaceholder() {
+            signDisplay.innerHTML = `
+                <div class="placeholder-content">
+                    <i class="fas fa-sign-language"></i>
+                    <p>Initiate text transmission to visualize ASL sequence</p>
+                </div>
+            `;
+        }
+
+        function addToHistory(text) {
+            const recentList = document.getElementById('recentList');
+            if (recentList.innerText.includes('No recent translations')) {
+                recentList.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.style.cssText = 'padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 0.9rem; border: 1px solid var(--glass-border);';
+            item.innerHTML = `<i class="far fa-comment-alt" style="margin-right: 8px; color: var(--accent-primary);"></i> ${text}`;
+            item.onclick = () => {
+                inputText.value = text;
+                translateBtn.click();
+            };
+
+            recentList.insertBefore(item, recentList.firstChild);
+            if (recentList.children.length > 5) recentList.lastChild.remove();
+        }
+
+        favoriteBtn.addEventListener('click', async () => {
+            if (!lastTranslationId) return;
+
+            try {
+                const response = await fetch(`/favorite/${lastTranslationId}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    favoriteBtn.innerHTML = data.is_favorite ? '<i class="fas fa-star" style="color: #fbbf24;"></i> Favorited' : '<i class="far fa-star"></i> Favorite';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    });
+</script>
+{% endblock %}

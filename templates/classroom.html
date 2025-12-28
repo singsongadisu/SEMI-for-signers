@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}{{ current_course.title }} Classroom • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lessons-hub {
+        max-width: 1400px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .lessons-hub-layout {
+        display: flex;
+        gap: 40px;
+        min-height: 80vh;
+    }
+
+    .curriculum-sidebar {
+        width: 320px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        height: fit-content;
+        position: sticky;
+        top: 100px;
+    }
+
+    .main-content {
+        flex-grow: 1;
+        min-width: 0;
+    }
+
+    .lesson-grid-premium {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 28px;
+        margin-top: 32px;
+    }
+
+    @media (max-width: 1100px) {
+        .lessons-hub-layout {
+            flex-direction: column;
+        }
+
+        .curriculum-sidebar {
+            width: 100%;
+            position: relative;
+            top: 0;
+        }
+    }
+
+    .lesson-premium-card {
+        padding: 30px;
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        border-radius: 20px;
+        transition: all 0.4s ease;
+    }
+
+    .lesson-premium-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--accent-primary);
+    }
+
+    .sidebar-lesson {
+        padding: 14px 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .sidebar-lesson:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+    }
+
+    .reading-content {
+        line-height: 1.8;
+        font-size: 1.15rem;
+        color: #e2e8f0;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 16px;
+    }
+
+    .pdf-viewer {
+        width: 100%;
+        height: 600px;
+        border: none;
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container lessons-hub">
+    <div class="lessons-hub-layout">
+        <!-- Curriculum Sidebar -->
+        <aside class="curriculum-sidebar glass-card">
+            <div style="padding: 24px; border-bottom: 1px solid var(--glass-border);">
+                <h3 style="font-size: 1.1rem; margin-bottom: 4px;">Course Content</h3>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ curriculum | length }} Chapters</div>
+            </div>
+
+            <div style="flex-grow: 1; overflow-y: auto;">
+                {% for item in curriculum %}
+                <div
+                    style="padding: 16px 24px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border);">
+                    <div
+                        style="font-size: 0.7rem; color: var(--accent-primary); font-weight: bold; text-transform: uppercase;">
+                        Chapter {{ loop.index }}</div>
+                    <div style="font-weight: 600; font-size: 0.95rem;">{{ item.module.name }}</div>
+                </div>
+                {% for lesson in item.lessons %}
+                <div class="sidebar-lesson" data-lesson='{{ lesson|tojson|safe }}'
+                    onclick='startLesson(JSON.parse(this.getAttribute("data-lesson")))'>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>{{ lesson.title }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">{{ lesson.duration }}m</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </aside>
+
+        <div class="main-content">
+            <div class="section-header">
+                <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <h1 style="font-size: 3rem; margin: 0;">{{ current_course.title }}</h1>
+                    <span class="badge-vibrant" style="margin: 0;">Subject Classroom</span>
+                </div>
+                <p style="color: var(--text-muted); max-width: 600px;">{{ current_course.description }}</p>
+                <div style="margin-top: 24px;">
+                    <a href="{{ url_for('courses') }}" class="btn btn-outline btn-small"><i
+                            class="fas fa-chevron-left"></i> All Courses</a>
+                </div>
+            </div>
+
+            <div class="lesson-grid-premium">
+                {% for item in curriculum %}
+                {% for lesson in item.lessons %}
+                <div class="glass-card lesson-premium-card">
+                    <h3 style="margin-top: 5px;">{{ lesson.title }}</h3>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 10px;">{{ lesson.description }}
+                    </p>
+                    <button class="btn btn-primary btn-small" data-lesson='{{ lesson|tojson|safe }}'
+                        onclick='startLesson(JSON.parse(this.getAttribute("data-lesson")))'
+                        style="margin-top: 25px; width: 100%;">
+                        <i class="fas fa-play" style="margin-right: 8px;"></i> Enter Classroom
+                    </button>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lesson Overlay (Same as Sign Lab but with Classroom specific messaging) -->
+<div id="lessonOverlay" class="active-lesson-overlay">
+    <div class="lesson-stepper-header">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <button id="exitLesson" class="btn btn-outline btn-small"><i class="fas fa-times"></i></button>
+            <div>
+                <h2 id="activeTitle" style="font-size: 1.5rem;">Lesson Title</h2>
+                <span id="activeStepInfo" style="font-size: 0.8rem; color: var(--text-muted);">LOADING...</span>
+            </div>
+        </div>
+        <div style="width: 300px;">
+            <div class="lesson-progress-thin" style="margin: 0;">
+                <div id="topProgressBar" class="lesson-progress-thin-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="lesson-main-stage">
+        <div class="video-viewport" id="activeVisual" style="overflow: hidden;"></div>
+        <div class="practice-module">
+            <h3 id="activeStepTitle">Loading...</h3>
+            <p id="activeStepDesc" style="color: var(--text-muted); margin: 12px 0 32px;"></p>
+            <div id="practiceArea"></div>
+
+            <!-- Translation Window -->
+            <div id="translationWindow" class="glass-card"
+                style="display: none; margin-top: 30px; border: 1px solid var(--accent-primary); background: rgba(var(--accent-primary-rgb), 0.05);">
+                <div
+                    style="padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                    <span
+                        style="font-size: 0.7rem; font-weight: bold; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="fas fa-language"></i> Smart Translation
+                    </span>
+                    <span class="badge-vibrant" style="font-size: 0.6rem; padding: 2px 6px;">LIVE FEED</span>
+                </div>
+                <div id="translationContent"
+                    style="padding: 20px; font-size: 0.95rem; line-height: 1.6; color: #fff; font-family: 'Outfit', sans-serif;">
+                    <!-- Transcript goes here -->
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; margin-top: 40px;">
+                <button id="stepBack" class="btn btn-outline" style="flex: 1;" disabled>Back</button>
+                <button id="stepNext" class="btn btn-primary" style="flex: 2;" disabled>Next Step</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let activeLesson = { id: null, title: null, steps: [] };
+    let currentStepIndex = 0;
+
+    async function startLesson(lesson) {
+        activeLesson.id = lesson.id;
+        activeLesson.title = lesson.title;
+        activeLesson.steps = [];
+        currentStepIndex = 0;
+        document.getElementById('lessonOverlay').style.display = 'flex';
+        document.getElementById('activeTitle').textContent = lesson.title;
+
+        try {
+            const res = await fetch(`/api/lesson/${lesson.id}/steps`);
+            const data = await res.json();
+            if (data.success && data.steps.length > 0) {
+                activeLesson.steps = data.steps;
+                renderStep();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderStep() {
+        const step = activeLesson.steps[currentStepIndex];
+        const totalSteps = activeLesson.steps.length;
+        document.getElementById('activeStepInfo').textContent = `STEP ${currentStepIndex + 1} OF ${totalSteps}`;
+        document.getElementById('topProgressBar').style.width = `${((currentStepIndex + 1) / totalSteps) * 100}%`;
+        const visual = document.getElementById('activeVisual');
+
+        if (step.content_type === 'youtube' || step.content_url.includes('youtube.com') || step.content_url.includes('youtu.be')) {
+            const embedUrl = getYouTubeEmbedUrl(step.content_url);
+            visual.innerHTML = `<iframe src="${embedUrl}" class="pdf-viewer" allowfullscreen style="background: #000;"></iframe>`;
+        } else if (step.content_type === 'pdf') {
+            visual.innerHTML = `<iframe src="${step.content_url}" class="pdf-viewer"></iframe>`;
+        } else if (step.content_type === 'reading') {
+            visual.innerHTML = `<div class="reading-content" style="text-align: left; padding: 40px;">${step.description}</div>`;
+        } else {
+            visual.innerHTML = `<div style="text-align: center; padding: 60px;"><h3 style="color: var(--accent-primary)">Academic Content</h3><p>${step.title}</p></div>`;
+        }
+
+        // Handle Translation Window
+        const transWindow = document.getElementById('translationWindow');
+        const transContent = document.getElementById('translationContent');
+        if (step.transcript) {
+            transContent.textContent = step.transcript;
+            transWindow.style.display = 'block';
+        } else {
+            transWindow.style.display = 'none';
+        }
+
+        document.getElementById('activeStepTitle').textContent = step.title;
+        document.getElementById('activeStepDesc').textContent = step.description;
+        document.getElementById('stepBack').disabled = currentStepIndex === 0;
+
+        const nextBtn = document.getElementById('stepNext');
+        nextBtn.disabled = false;
+        nextBtn.textContent = (currentStepIndex === totalSteps - 1) ? "Complete Session" : "Next Step";
+    }
+
+    function getYouTubeEmbedUrl(url) {
+        if (!url) return '';
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : url;
+    }
+
+    document.getElementById('stepNext').onclick = async () => {
+        if (currentStepIndex < activeLesson.steps.length - 1) {
+            currentStepIndex++;
+            renderStep();
+        } else {
+            try {
+                await fetch('/api/lesson/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lesson_id: activeLesson.id })
+                });
+                showNotifier(`Session Complete!`, "success");
+            } catch (e) { }
+            setTimeout(() => { document.getElementById('lessonOverlay').style.display = 'none'; location.reload(); }, 1000);
+        }
+    };
+
+    document.getElementById('stepBack').onclick = () => { if (currentStepIndex > 0) { currentStepIndex--; renderStep(); } };
+    document.getElementById('exitLesson').onclick = () => {
+        showConfirm('Exit Classroom', "Are you sure you want to exit the academic classroom?", (confirmed) => {
+            if (confirmed) document.getElementById('lessonOverlay').style.display = 'none';
+        });
+    };
+</script>
+{% endblock %}

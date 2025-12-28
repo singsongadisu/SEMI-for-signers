@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In • SEMI{% endblock %}
+
+{% block body_class %}auth-background{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="glass-card auth-card" data-aos="fade-up">
+        <div class="auth-header">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SEMI Logo"
+                style="height: 110px; width: auto; margin-bottom: 32px; filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.8));">
+            <h1>Welcome Back</h1>
+            <p style="color: var(--text-muted);">Please enter your details to sign in</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" id="email" class="form-input" placeholder="name@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <label
+                    style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;">
+                    <input type="checkbox" style="accent-color: var(--accent-primary);"> Remember me
+                </label>
+                <a href="#" style="color: var(--accent-primary); text-decoration: none; font-size: 0.9rem;">Forgot
+                    password?</a>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">
+                Sign In <i class="fas fa-sign-in-alt"></i>
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 32px; color: var(--text-muted); font-size: 0.95rem;">
+            Don't have an account? <a href="{{ url_for('register') }}"
+                style="color: var(--accent-primary); text-decoration: none; font-weight: 600;">Join free today</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector('button');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Signing in...';
+
+        const formData = {
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showNotifier('Authenticating... Welcome back!', 'success');
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/dashboard';
+                }, 1000);
+            } else {
+                showNotifier(data.message || 'Access denied. Please check your credentials.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotifier('Connection lost. Please try again.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+# Environment
+.env
+.venv/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Local Data/Instance
+# data/*.json
+instance/
+
+# Flask
+.webassets-cache
+.flaskenv
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

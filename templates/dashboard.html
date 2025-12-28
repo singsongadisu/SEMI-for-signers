@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-header {
+        margin-bottom: 40px;
+    }
+
+    .welcome-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 8px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        margin-bottom: 60px;
+    }
+
+    .dashboard-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 40px;
+    }
+
+    .activity-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .activity-item {
+        padding: 20px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: var(--transition-smooth);
+    }
+
+    .activity-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent-primary);
+    }
+
+    .progress-section {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .progress-card {
+        padding: 24px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--glass-border);
+    }
+
+    .progress-track {
+        height: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        margin: 16px 0 8px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+    }
+
+    .quick-link-card {
+        padding: 20px;
+        text-align: center;
+        text-decoration: none;
+        color: #fff;
+        border-radius: var(--radius-md);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        transition: var(--transition-smooth);
+    }
+
+    .quick-link-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--accent-primary);
+    }
+
+    .quick-link-card i {
+        font-size: 2rem;
+        margin-bottom: 12px;
+        color: var(--accent-primary);
+        display: block;
+    }
+
+    /* Gamification Styles */
+    .heatmap-container {
+        padding: 24px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        margin-bottom: 40px;
+    }
+
+    .heatmap-grid {
+        display: grid;
+        grid-template-columns: repeat(53, 1fr);
+        gap: 4px;
+        margin-top: 16px;
+    }
+
+    .heatmap-cell {
+        aspect-ratio: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 2px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .heatmap-cell:hover {
+        transform: scale(1.5);
+        z-index: 10;
+        border: 1px solid var(--accent-primary);
+    }
+
+    .heatmap-cell.level-1 {
+        background: rgba(0, 242, 254, 0.2);
+    }
+
+    .heatmap-cell.level-2 {
+        background: rgba(0, 242, 254, 0.4);
+    }
+
+    .heatmap-cell.level-3 {
+        background: rgba(0, 242, 254, 0.7);
+    }
+
+    .heatmap-cell.level-4 {
+        background: var(--accent-primary);
+        box-shadow: 0 0 10px var(--accent-primary);
+    }
+
+    .achievement-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-sm);
+        margin-bottom: 10px;
+        transition: transform 0.3s ease;
+    }
+
+    .achievement-item:hover {
+        transform: translateX(10px);
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .achievement-icon {
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 255, 0.1);
+        border-radius: 50%;
+    }
+
+    .accent-color {
+        color: var(--accent-primary);
+    }
+
+    .secondary-color {
+        color: var(--accent-secondary);
+    }
+
+    .streak-color {
+        color: #ff4b2b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 20px;">
+    <div class="welcome-header">
+        <h1>Welcome back, {{ current_user.first_name }}! 👋</h1>
+        <p style="color: var(--text-muted);">Track your progress and continue mastering American Sign Language.</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
+        <div class="glass-card stat-box" style="padding: 24px; border-bottom: 3px solid #ff4b2b;">
+            <span class="stat-number" style="font-size: 2rem; color: #ff4b2b;">🔥 {{ progress.streak_count if progress
+                else 0 }}</span>
+            <span class="stat-label">Day Streak</span>
+        </div>
+        <div class="glass-card stat-box" style="padding: 24px;">
+            <span class="stat-number" style="font-size: 2rem;">{{ total_translations }}</span>
+            <span class="stat-label">Translations</span>
+        </div>
+        <div class="glass-card stat-box" style="padding: 24px;">
+            <span class="stat-number" style="font-size: 2rem;">{{ progress.lessons_completed if progress else 0
+                }}</span>
+            <span class="stat-label">Lessons Done</span>
+        </div>
+        <div class="glass-card stat-box" style="padding: 24px;">
+            <span class="stat-number" style="font-size: 2rem;">{{ progress.level if progress else 1 }}</span>
+            <span class="stat-label">Skill Level</span>
+        </div>
+        <div class="glass-card stat-box" style="padding: 24px;">
+            <span class="stat-number" style="font-size: 2rem;">{{ progress.experience_points if progress else 0
+                }}</span>
+            <span class="stat-label">Total XP</span>
+        </div>
+    </div>
+
+    <div class="dashboard-layout">
+        <!-- Main Content: Recent Activity -->
+        <div class="activity-section">
+            <h2 style="margin-bottom: 24px;">Learning Consistency</h2>
+            <div class="heatmap-container">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.9rem; color: var(--text-muted);">Last 365 Days</span>
+                    <div
+                        style="display: flex; gap: 8px; font-size: 0.75rem; color: var(--text-muted); align-items: center;">
+                        Less <div class="heatmap-cell"
+                            style="width: 12px; height: 12px; background: rgba(255,255,255,0.05)"></div>
+                        <div class="heatmap-cell level-1" style="width: 12px; height: 12px;"></div>
+                        <div class="heatmap-cell level-2" style="width: 12px; height: 12px;"></div>
+                        <div class="heatmap-cell level-3" style="width: 12px; height: 12px;"></div>
+                        <div class="heatmap-cell level-4" style="width: 12px; height: 12px;"></div> More
+                    </div>
+                </div>
+                <div id="activityHeatmap" class="heatmap-grid" style="grid-template-columns: repeat(53, 1fr);">
+                    <!-- Javascript will populate cells -->
+                </div>
+            </div>
+
+            <h2 style="margin-bottom: 24px;">Recent Activity</h2>
+            <div class="activity-list">
+                {% if recent_translations %}
+                {% for translation in recent_translations %}
+                <div class="activity-item">
+                    <div>
+                        <strong style="display: block; font-size: 1.1rem; margin-bottom: 4px;">{{
+                            translation.original_text }}</strong>
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">{{
+                            translation.created_at.strftime('%B %d, %H:%M') }}</span>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="retranslate('{{ translation.original_text }}')"
+                            class="btn btn-outline btn-small" style="padding: 8px 16px;">
+                            <i class="fas fa-redo"></i> Again
+                        </button>
+                        <button class="btn btn-outline btn-small" style="padding: 8px;">
+                            {% if translation.is_favorite %}<i class="fas fa-star" style="color: #fbbf24;"></i>{% else
+                            %}<i class="far fa-star"></i>{% endif %}
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="glass-card" style="text-align: center; padding: 60px;">
+                    <i class="fas fa-signature"
+                        style="font-size: 4rem; opacity: 0.2; margin-bottom: 20px; display: block;"></i>
+                    <p style="color: var(--text-muted);">No activity recorded yet.</p>
+                    <a href="{{ url_for('translator') }}" class="btn btn-primary" style="margin-top: 24px;">Start
+                        Translating</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <h2 style="margin: 48px 0 24px;">Quick Actions</h2>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                <a href="{{ url_for('translator') }}" class="quick-link-card">
+                    <i class="fas fa-language"></i>
+                    <span>Translator</span>
+                </a>
+                <a href="{{ url_for('courses') }}" class="quick-link-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Courses</span>
+                </a>
+                <a href="{{ url_for('history') }}" class="quick-link-card">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </a>
+                <a href="{{ url_for('profile') }}" class="quick-link-card">
+                    <i class="fas fa-user-edit"></i>
+                    <span>Profile</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar: Progress and Level -->
+        <div class="progress-section">
+            <h2 style="margin-bottom: 24px;">Achievements 🏆</h2>
+            <div class="glass-card" style="padding: 20px;">
+                {% if achievements %}
+                {% for ach in achievements %}
+                <div class="achievement-item" title="{{ ach.description }}">
+                    <div class="achievement-icon">{{ ach.icon }}</div>
+                    <div>
+                        <strong style="display: block; font-size: 0.95rem;">{{ ach.title }}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">{{ ach.earned_at.strftime('%b %d')
+                            }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p style="text-align: center; color: var(--text-muted); padding: 20px;">No trophies yet. Keep
+                    practicing!</p>
+                {% endif %}
+            </div>
+
+            <h2 style="margin: 24px 0;">My Progress</h2>
+            <div class="glass-card">
+                <div class="progress-card" style="margin-bottom: 20px;">
+                    {% set basic_progress_pct = ((progress.lessons_completed / 8) * 100) | round(0) if progress and
+                    progress.lessons_completed else 0 %}
+                    <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                        <span>Basic ASL</span>
+                        <span style="color: var(--accent-primary);">{{ basic_progress_pct }}%</span>
+                    </div>
+                    <div class="progress-track"
+                        style="height: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 20px; overflow: hidden;">
+                        <div class="progress-fill" {{ 'style="width: ' ~ basic_progress_pct ~ '%; height: 100%;"' | safe
+                            }}></div>
+                    </div>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">{{ progress.lessons_completed if
+                        progress else 0 }}/8 Lessons</span>
+                </div>
+
+                <div class="progress-card">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                        <span>Experience</span>
+                        <span style="color: var(--accent-secondary);">{{ progress.experience_points if progress else 0
+                            }} XP</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width: 40%; background: var(--accent-secondary);"></div>
+                    </div>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Next reward at 500 XP</span>
+                </div>
+            </div>
+
+            <div class="glass-card"
+                style="margin-top: 24px; background: linear-gradient(135deg, rgba(0, 242, 254, 0.1), transparent);">
+                <h4>Today's Tip 💡</h4>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 12px;">Consistency is key! Just 10
+                    minutes of ASL practice every day significantly improves retention.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function retranslate(text) {
+        localStorage.setItem('retranslateText', text);
+        window.location.href = '/translator';
+    }
+
+    // Load Heatmap Data
+    async function initHeatmap() {
+        const grid = document.getElementById('activityHeatmap');
+        if (!grid) return;
+
+        try {
+            const res = await fetch('/api/user/heatmap');
+            const data = await res.json();
+            const heatmap = data.heatmap || {};
+
+            // Last 365 days
+            const now = new Date();
+            for (let i = 364; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                const count = heatmap[dateStr] || 0;
+
+                const cell = document.createElement('div');
+                cell.className = 'heatmap-cell';
+                if (count > 0) {
+                    if (count < 2) cell.classList.add('level-1');
+                    else if (count < 4) cell.classList.add('level-2');
+                    else if (count < 7) cell.classList.add('level-3');
+                    else cell.classList.add('level-4');
+                }
+
+                cell.title = `${dateStr}: ${count} activity`;
+                grid.appendChild(cell);
+            }
+        } catch (e) {
+            console.error("Heatmap loading error:", e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initHeatmap);
+</script>
+{% endblock %}

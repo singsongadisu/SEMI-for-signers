@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Themed Lessons • SEMI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lessons-hub {
+        max-width: 1400px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    .lessons-hub-layout {
+        display: flex;
+        gap: 40px;
+        min-height: 80vh;
+    }
+
+    .curriculum-sidebar {
+        width: 320px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        height: fit-content;
+        position: sticky;
+        top: 100px;
+    }
+
+    .main-content {
+        flex-grow: 1;
+        min-width: 0;
+        /* Critical for grid nested in flex */
+    }
+
+    .lesson-grid-premium {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 28px;
+        margin-top: 32px;
+    }
+
+    @media (max-width: 1100px) {
+        .lessons-hub-layout {
+            flex-direction: column;
+        }
+
+        .curriculum-sidebar {
+            width: 100%;
+            position: relative;
+            top: 0;
+        }
+
+        .lesson-grid-premium {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .lesson-premium-card {
+        display: flex;
+        flex-direction: column;
+        /* Stack vertically for more breathing room */
+        gap: 20px;
+        padding: 30px;
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        border-radius: 20px;
+    }
+
+    .lesson-premium-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--accent-primary);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .lesson-deco-icon {
+        font-size: 2.8rem;
+        background: rgba(255, 255, 255, 0.05);
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .lesson-meta-bar {
+        display: flex;
+        gap: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--accent-primary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .sidebar-section {
+        padding: 24px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .sidebar-chapter-header {
+        padding: 16px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .sidebar-lesson {
+        padding: 14px 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .sidebar-lesson:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+    }
+
+    .sidebar-lesson.active {
+        background: rgba(79, 172, 254, 0.1);
+        border-left-color: var(--accent-primary);
+        color: var(--accent-primary);
+        font-weight: 600;
+    }
+
+    .reading-content {
+        line-height: 1.8;
+        font-size: 1.15rem;
+        color: #e2e8f0;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 16px;
+    }
+
+    .pdf-viewer {
+        width: 100%;
+        height: 600px;
+        /* Force height */
+        border: none;
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container lessons-hub">
+    <div class="lessons-hub-layout">
+        {% if current_course %}
+        <!-- Curriculum Sidebar -->
+        <aside class="curriculum-sidebar glass-card">
+            <div class="sidebar-section">
+                <h3 style="font-size: 1.1rem; margin-bottom: 4px;">Course Content</h3>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ curriculum | length }} Chapters •
+                    {% set total_lessons = 0 %}
+                    {% for item in curriculum %}
+                    {% set total_lessons = total_lessons + item.lessons | length %}
+                    {% endfor %}
+                    {{ total_lessons }} Lessons
+                </div>
+            </div>
+
+            <div style="flex-grow: 1; overflow-y: auto;">
+                {% for item in curriculum %}
+                <div
+                    style="padding: 16px 24px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border);">
+                    <div
+                        style="font-size: 0.7rem; color: var(--accent-primary); font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">
+                        Chapter {{ loop.index }}</div>
+                    <div style="font-weight: 600; font-size: 0.95rem;">{{ item.module.name }}</div>
+                </div>
+                {% for lesson in item.lessons %}
+                <div class="sidebar-lesson" data-lesson='{{ lesson|tojson | safe }}'
+                    onclick='startLesson(JSON.parse(this.dataset.lesson))'>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ lesson.title }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">{{ lesson.duration }}m</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </aside>
+        {% endif %}
+
+        <div class="main-content">
+            <div class="section-header">
+                <div style="display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: wrap;">
+                    <h1 style="font-size: 3rem; margin: 0;">
+                        {% if current_course %}
+                        {{ current_course.title }}
+                        {% else %}
+                        Sign Lab
+                        {% endif %}
+                    </h1>
+                    <span class="badge-vibrant" style="margin: 0;">
+                        {% if current_course %}
+                        Classroom Area
+                        {% else %}
+                        Sign Lab Foundations
+                        {% endif %}
+                    </span>
+                </div>
+                <p style="color: var(--text-muted); max-width: 600px; margin-top: 16px;">
+                    {% if current_course %}
+                    {{ current_course.description }}
+                    {% else %}
+                    Focused modules designed to teach the fundamentals of sign language, from vocabulary to basic
+                    conversational structures.
+                    {% endif %}
+                </p>
+
+                {% if current_course %}
+                <div style="margin-top: 24px;">
+                    <a href="{{ url_for('courses') }}" class="btn btn-outline btn-small">
+                        <i class="fas fa-chevron-left"></i> All Courses
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="lesson-grid-premium">
+                {% for item in curriculum %}
+                {% for lesson in item.lessons %}
+                <div class="glass-card lesson-premium-card" data-lesson-id="{{ lesson.id }}">
+                    <div class="card-header-flex">
+                        <div class="lesson-deco-icon">{{ lesson.category_icon }}</div>
+                        <div class="lesson-meta-bar">
+                            <span>{{ lesson.difficulty|title }}</span>
+                            <span>•</span>
+                            <span>{{ lesson.duration }} MINS</span>
+                        </div>
+                    </div>
+                    <div style="flex-grow: 1;">
+                        <h3 style="margin-top: 5px;">{{ lesson.title }}</h3>
+                        <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 10px; line-height: 1.6;">
+                            {{ lesson.description }}
+                        </p>
+                        <button class="btn btn-primary btn-small start-btn" data-lesson='{{ lesson|tojson|safe }}'
+                            onclick='startLesson(JSON.parse(this.dataset.lesson))'
+                            style="margin-top: 25px; width: 100%; justify-content: center; height: 45px;">
+                            <i class="fas fa-play" style="margin-right: 8px; font-size: 0.8rem;"></i> Start Learning
+                        </button>
+                    </div>
+                    <div
+                        style="font-size: 0.7rem; color: var(--accent-primary); font-weight: bold; margin-top: 15px; opacity: 0.7;">
+                        {{ lesson.category_name|upper }}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endfor %}
+
+
+                {% if not curriculum %}
+                <div style="grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--text-muted);">
+                    <i class="fas fa-books" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                    <h3>No modules available yet</h3>
+                    <p>Check back soon for new content!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Lesson View -->
+<div id="lessonOverlay" class="active-lesson-overlay">
+    <div class="lesson-stepper-header">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <button id="exitLesson" class="btn btn-outline btn-small"><i class="fas fa-times"></i></button>
+            <div>
+                <h2 id="activeTitle" style="font-size: 1.5rem;">Lesson Title</h2>
+                <span id="activeStepInfo" style="font-size: 0.8rem; color: var(--text-muted);">LOADING...</span>
+            </div>
+        </div>
+        <div style="width: 300px;">
+            <div class="lesson-progress-thin" style="margin: 0;">
+                <div id="topProgressBar" class="lesson-progress-thin-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lesson-main-stage">
+        <div class="video-viewport" id="activeVisual" style="overflow: hidden;">
+            <div class="fa-3x"><i class="fas fa-circle-notch fa-spin"></i></div>
+        </div>
+
+        <div class="practice-module">
+            <h3 id="activeStepTitle">Loading...</h3>
+            <p id="activeStepDesc" style="color: var(--text-muted); margin: 12px 0 32px;">Please wait while we prepare
+                your lesson content.</p>
+
+            <div id="practiceArea"></div>
+
+            <div style="display: flex; gap: 16px; margin-top: 40px;">
+                <button id="stepBack" class="btn btn-outline" style="flex: 1; justify-content: center;"
+                    disabled>Back</button>
+                <button id="stepNext" class="btn btn-primary" style="flex: 2; justify-content: center;" disabled>Next
+                    Step</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let activeLesson = {
+        id: null,
+        title: null,
+        steps: []
+    };
+    let currentStepIndex = 0;
+
+    async function startLesson(lesson) {
+        activeLesson.id = lesson.id;
+        activeLesson.title = lesson.title;
+        activeLesson.steps = [];
+        currentStepIndex = 0;
+
+        document.getElementById('lessonOverlay').style.display = 'flex';
+        document.getElementById('activeTitle').textContent = lesson.title;
+
+        // Show loading state
+        document.getElementById('activeStepInfo').textContent = 'LOADING MODULE...';
+        document.getElementById('activeVisual').innerHTML = '<div class="fa-3x" style="color: var(--accent-primary)"><i class="fas fa-circle-notch fa-spin"></i></div>';
+
+        try {
+            const res = await fetch(`/api/lesson/${lesson.id}/steps`);
+            const data = await res.json();
+
+            if (data.success && data.steps.length > 0) {
+                activeLesson.steps = data.steps;
+                renderStep();
+            } else {
+                showNotifier("Module initialization failed: NO_DATA", "error");
+                setTimeout(() => {
+                    document.getElementById('lessonOverlay').style.display = 'none';
+                }, 2000);
+            }
+        } catch (e) {
+            console.error(e);
+            showNotifier("Network signal lost.", "error");
+            document.getElementById('lessonOverlay').style.display = 'none';
+        }
+    }
+
+    function renderStep() {
+        const step = activeLesson.steps[currentStepIndex];
+        const totalSteps = activeLesson.steps.length;
+
+        document.getElementById('activeStepInfo').textContent = `STEP ${currentStepIndex + 1} OF ${totalSteps}`;
+        document.getElementById('topProgressBar').style.width = `${((currentStepIndex + 1) / totalSteps) * 100}%`;
+
+        const visual = document.getElementById('activeVisual');
+
+        // Check content type and render accordingly
+        if (step.content_type === 'pdf') {
+            visual.innerHTML = `
+                <iframe src="${step.content_url}" class="pdf-viewer"></iframe>
+            `;
+            visual.style.background = '#f1f5f9';
+        } else if (step.content_type === 'reading') {
+            visual.innerHTML = `
+                <div class="reading-content" style="text-align: left; padding: 40px;">
+                    ${step.description}
+                </div>
+            `;
+            visual.style.background = 'rgba(255,255,255,0.03)';
+        } else if (step.content_type === 'video' || step.content_url.endsWith('.gif') || step.content_url.endsWith('.mp4')) {
+            visual.style.background = '#000';
+            if (step.content_url.endsWith('.mp4')) {
+                visual.innerHTML = `
+                    <video src="${step.content_url}" autoplay loop muted playsinline 
+                        style="width: 100%; height: 100%; object-fit: contain; padding: 0; border-radius: 20px;">
+                    </video>`;
+            } else {
+                visual.innerHTML = `
+                    <img src="${step.content_url}" 
+                        style="width: 100%; height: 100%; object-fit: contain; padding: 20px; border-radius: 40px; filter: drop-shadow(0 15px 45px rgba(0,0,0,0.7));">`;
+            }
+        } else {
+            // Text or other content
+            visual.innerHTML = `
+                <div style="font-size: 5rem; font-weight: bold; color: var(--accent-cyan);">
+                    ${step.content_url}
+                </div>`;
+        }
+
+        document.getElementById('activeStepTitle').textContent = step.title;
+        document.getElementById('activeStepDesc').textContent = step.description;
+
+        const nextBtn = document.getElementById('stepNext');
+        const backBtn = document.getElementById('stepBack');
+
+        backBtn.disabled = currentStepIndex === 0;
+        nextBtn.disabled = false;
+        nextBtn.textContent = (currentStepIndex === totalSteps - 1) ? "Finish Lesson" : "Next Step";
+    }
+
+    document.getElementById('stepNext').onclick = async () => {
+        if (currentStepIndex < activeLesson.steps.length - 1) {
+            currentStepIndex++;
+            renderStep();
+        } else {
+            // Complete lesson
+            try {
+                const res = await fetch('/api/lesson/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lesson_id: activeLesson.id })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showNotifier(`Module Complete! +50 XP (Total: ${result.new_xp})`, "success");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
+            setTimeout(() => {
+                document.getElementById('lessonOverlay').style.display = 'none';
+                location.reload(); // Reload to update any progress bars on main page if we add them later
+            }, 1000);
+        }
+    };
+
+    document.getElementById('stepBack').onclick = () => {
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            renderStep();
+        }
+    };
+
+    document.getElementById('exitLesson').onclick = () => {
+        showConfirm(
+            'Terminate Session',
+            "Are you sure you want to exit? Your neural progress for this localized session will be lost.",
+            (confirmed) => {
+                if (confirmed) {
+                    document.getElementById('lessonOverlay').style.display = 'none';
+                }
+            }
+        );
+    };
+</script>
+{% endblock %}
