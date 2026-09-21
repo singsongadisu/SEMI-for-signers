@@ -174,78 +174,40 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Dynamic Floating Footer -->
-    <footer class="footer-wrapper" data-aos="fade-up">
-        <div class="footer-background-text">SEMI</div>
-
-        <div class="footer-island glass-card">
-            <div class="footer-content-grid">
-                <!-- Brand Spotlight -->
-                <div class="footer-spotlight">
-                    <div class="spotlight-header">
-                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SEMI Logo"
-                            class="footer-logo">
-                        <div class="brand-text-block">
-                            <h2 class="footer-brand-title">SEMI</h2>
-                            <span class="brand-subtitle">The Sign Ecosystem</span>
-                        </div>
+    <!-- Shared footer -->
+    <footer class="semi-footer">
+        <div class="semi-footer-inner">
+            <div class="semi-footer-grid">
+                <div class="semi-footer-brand">
+                    <div class="semi-footer-identity">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="" width="44" height="44">
+                        <span>SEMI</span>
                     </div>
-                    <p class="footer-description">
-                        Revolutionizing human connection through technological empathy. We build the bridges where
-                        communication creates community.
-                    </p>
-                    <div class="social-links-premium">
-                        <a href="#" class="social-btn"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="social-btn"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-btn"><i class="fab fa-linkedin-in"></i></a>
-                    </div>
+                    <p>Inclusive sign-language learning and translation tools.</p>
                 </div>
-
-                <!-- Navigation Columns -->
-                <div class="footer-main-nav">
-                    <div class="nav-stack">
-                        <h4 class="nav-title">Platform</h4>
-                        <a href="{{ url_for('courses') }}" class="nav-item">Learning Hub</a>
-                        <a href="{{ url_for('translator') }}" class="nav-item">ASL Translator</a>
-                        <a href="{{ url_for('quiz_page') }}" class="nav-item">Skill Arena</a>
-                        <a href="{{ url_for('feedback') }}" class="nav-item">Send Feedback</a>
-                    </div>
-                    <div class="nav-stack">
-                        <h4 class="nav-title">Ecosystem</h4>
-                        <a href="{{ url_for('sign_lab_page') }}" class="nav-item">Sign Lab</a>
-                        <a href="#" class="nav-item">Community</a>
-                        <a href="#" class="nav-item">API Access</a>
-                    </div>
-                </div>
-
-                <!-- Premium Newsletter -->
-                <div class="footer-action-zone">
-                    <div class="newsletter-card glass-card">
-                        <h4 class="action-title">Stay in Orbit</h4>
-                        <p class="action-text">Get weekly ASL insights delivered to your terminal.</p>
-                        <form class="action-form" onsubmit="event.preventDefault();">
-                            <input type="email" placeholder="Your email..." class="action-input" required>
-                            <button type="submit" class="action-submit">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                <nav aria-labelledby="footer-explore-title">
+                    <h2 id="footer-explore-title">Explore</h2>
+                    <ul>
+                        <li><a href="{{ url_for('translator') }}">Translator</a></li>
+                        <li><a href="{{ url_for('courses') }}">Courses</a></li>
+                        <li><a href="{{ url_for('sign_lab_page') }}">Sign Lab</a></li>
+                        <li><a href="{{ url_for('quiz_page') }}">Quiz</a></li>
+                    </ul>
+                </nav>
+                <nav aria-labelledby="footer-support-title">
+                    <h2 id="footer-support-title">Account &amp; support</h2>
+                    <ul>
+                        {% if not current_user.is_authenticated %}
+                        <li><a href="{{ url_for('login') }}">Sign in</a></li>
+                        <li><a href="{{ url_for('register') }}">Create account</a></li>
+                        {% endif %}
+                        <li><a href="{{ url_for('feedback') }}">Feedback{% if not current_user.is_authenticated %} (sign-in required){% endif %}</a></li>
+                    </ul>
+                </nav>
             </div>
-
-            <div class="footer-bottom-bar">
-                <div class="legal-wrap">
-                    <span>&copy; 2025 SEMI Ecosystem.</span>
-                    <div class="legal-links">
-                        <a href="#">Privacy</a>
-                        <a href="#">Terms</a>
-                        <a href="#">System State</a>
-                    </div>
-                </div>
-                <div class="scroll-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-                    <i class="fas fa-arrow-up"></i>
-                </div>
+            <div class="semi-footer-bottom">
+                <span>&copy; 2026 SEMI</span>
+                <span>Built as an inclusive learning platform.</span>
             </div>
         </div>
     </footer>
@@ -266,7 +228,7 @@
                 </div>
                 <div class="bot-details">
                     <h4>SEMI Assistant</h4>
-                    <span class="status"><span class="status-dot"></span>Online</span>
+                    <span class="status" id="assistantStatus" role="status">{{ "AI configured - untested" if assistant_configured else "Limited local responses" }}</span>
                 </div>
             </div>
             <button id="closeChat" class="close-chat">

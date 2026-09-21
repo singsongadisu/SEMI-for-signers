@@ -71,7 +71,7 @@
             <h1 style="font-size: 3rem; margin: 0;">Translation History</h1>
             <span class="badge-vibrant" style="margin: 0;">My Logbook</span>
         </div>
-        <p style="color: var(--text-muted);">A comprehensive record of your ASL translations and learning milestones.
+        <p style="color: var(--text-muted);">Your saved English and Amharic sign conversions.
         </p>
     </div>
 
@@ -81,7 +81,8 @@
         <button class="history-tab">Recent</button>
     </div>
 
-    <div id="historyList">
+    <p id="historyActionStatus" role="status"></p>
+    <div id="historyList" data-translator-url="{{ url_for('translator') }}">
         {% if translations %}
         {% for translation in translations %}
         <div class="history-item-premium" data-aos="fade-left">
@@ -99,10 +100,15 @@
             </div>
 
             <div style="display: flex; gap: 12px; align-items: center;">
-                <button class="btn btn-outline btn-small" onclick="retranslate('{{ translation.original_text }}')">
-                    <i class="fas fa-redo"></i> Translate
+                <button type="button" class="btn btn-outline btn-small retranslate-btn"
+                    data-text="{{ translation.original_text }}"
+                    data-language="{{ 'amharic' if translation.translation_type == 'amharic_text' else 'english' }}">
+                    <i class="fas fa-redo" aria-hidden="true"></i> Convert again
                 </button>
-                <button class="btn btn-outline btn-small fav-btn"
+                <button type="button" class="btn btn-outline btn-small fav-btn"
+                    data-favorite-url="{{ url_for('toggle_favorite', translation_id=translation.id) }}"
+                    aria-label="{{ 'Remove from favorites' if translation.is_favorite else 'Save to favorites' }}"
+                    aria-pressed="{{ 'true' if translation.is_favorite else 'false' }}"
                     style="color: {% if translation.is_favorite %}#fbbf24{% else %}inherit{% endif %};">
                     {% if translation.is_favorite %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{%
                     endif %}
@@ -126,22 +132,41 @@
 
 {% block extra_js %}
 <script>
-    function retranslate(text) {
-        localStorage.setItem('retranslateText', text);
-        window.location.href = "{{ url_for('translator') }}";
-    }
-
-    document.querySelectorAll('.fav-btn').forEach(btn => {
-        btn.onclick = () => {
-            const icon = btn.querySelector('i');
-            if (icon.classList.contains('far')) {
-                icon.className = 'fas fa-star';
-                btn.style.color = '#fbbf24';
-            } else {
-                icon.className = 'far fa-star';
-                btn.style.color = 'inherit';
+    const historyStatus = document.getElementById('historyActionStatus');
+    document.querySelectorAll('.retranslate-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            try {
+                sessionStorage.setItem('semi.retranslate', JSON.stringify({
+                    text: button.dataset.text,
+                    language: button.dataset.language
+                }));
+                window.location.href = document.getElementById('historyList').dataset.translatorUrl;
+            } catch (error) {
+                historyStatus.textContent = 'Could not reopen this entry. Please allow browser session storage or copy the text into Translator.';
             }
-        };
+        });
+    });
+    document.querySelectorAll('.fav-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            if (button.disabled) return;
+            button.disabled = true;
+            historyStatus.textContent = '';
+            try {
+                const response = await fetch(button.dataset.favoriteUrl, { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error('Favorite failed');
+                const saved = data.is_favorite;
+                button.querySelector('i').className = saved ? 'fas fa-star' : 'far fa-star';
+                button.style.color = saved ? '#fbbf24' : 'inherit';
+                button.setAttribute('aria-pressed', String(saved));
+                button.setAttribute('aria-label', saved ? 'Remove from favorites' : 'Save to favorites');
+                historyStatus.textContent = saved ? 'Saved to favorites.' : 'Removed from favorites.';
+            } catch (error) {
+                historyStatus.textContent = 'Could not update favorites. Please sign in again or retry.';
+            } finally {
+                button.disabled = false;
+            }
+        });
     });
 </script>
 {% endblock %}

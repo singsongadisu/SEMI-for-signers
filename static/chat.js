@@ -10,7 +10,8 @@ class AIChat {
             messages: document.getElementById('chatMessages'),
             input: document.getElementById('chatInput'),
             sendBtn: document.getElementById('sendMessage'),
-            typing: document.getElementById('typingIndicator')
+            typing: document.getElementById('typingIndicator'),
+            status: document.getElementById('assistantStatus')
         };
 
         this.init();
@@ -27,7 +28,7 @@ class AIChat {
 
         // Add initial greeting if empty
         if (this.elements.messages.children.length === 1) { // 1 is typing indicator
-            this.addBotMessage("Hi there! I'm your ASL learning assistant. How can I help you today? 👋");
+            this.addBotMessage("Hi there! I'm your SEMI Sign Language Assistant. How can I help you today? 👋");
         }
     }
 
@@ -48,7 +49,8 @@ class AIChat {
 
     async sendMessage() {
         const text = this.elements.input.value.trim();
-        if (!text) return;
+        if (!text || this.sending) return;
+        this.sending = true;
 
         // Add user message
         this.addUserMessage(text);
@@ -58,7 +60,7 @@ class AIChat {
         this.showTyping(true);
 
         try {
-            // Simulate network delay for realism
+            // Provider availability is learned from this response.
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -71,16 +73,26 @@ class AIChat {
 
             this.showTyping(false);
 
+            if (data.status) {
+                const labels = {
+                    available: 'AI available',
+                    unavailable: 'AI unavailable - limited responses',
+                    unconfigured: 'Limited local responses'
+                };
+                this.elements.status.textContent = labels[data.status] || 'Status unknown';
+            }
             if (data.success) {
-                this.addBotMessage(data.reply);
+                this.addBotMessage((data.mode === 'ai' ? 'AI response: ' : '') + data.reply);
             } else {
-                this.addBotMessage(data.message || "I'm having trouble connecting to my brain right now. Try again later! 🧠");
+                this.addBotMessage(data.message || "The assistant is temporarily unavailable. Please try again.");
             }
 
         } catch (error) {
-            console.error('Chat Error:', error);
+            this.elements.status.textContent = 'Connection unavailable';
             this.showTyping(false);
-            this.addBotMessage("Sorry, I encountered a connection error. Please check your internet.");
+            this.addBotMessage("Sorry, I encountered a connection error. Please try again.");
+        } finally {
+            this.sending = false;
         }
     }
 
@@ -96,8 +108,8 @@ class AIChat {
         const div = document.createElement('div');
         div.className = 'message bot';
 
-        // Basic formatting (bolding)
-        div.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Render responses as text, never executable HTML.
+        div.textContent = text.replace(/\*\*(.*?)\*\*/g, '$1');
 
         this.elements.messages.insertBefore(div, this.elements.typing);
         this.scrollToBottom();

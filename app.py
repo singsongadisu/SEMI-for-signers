@@ -152,13 +152,15 @@ def send_admin_notification(subject, message):
         msg['From'] = f"SEMI Admin <{EMAIL_USER}>"
         msg['To'] = ADMIN_EMAIL
         msg['Subject'] = f'SEMI Admin: {subject}'
+
+        html_message = message.replace('\n', '<br>')
         
         html_content = f"""
         <html>
         <body style="font-family: sans-serif; background-color: #050a10; color: #ffffff; padding: 20px;">
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 25px;">
                 <h2 style="color: #4facfe; margin-top: 0;">System Intelligence Report</h2>
-                <p style="color: #94a3b8; line-height: 1.6;">{message.replace('\\n', '<br>')}</p>
+                <p style="color: #94a3b8; line-height: 1.6;">{html_message}</p>
                 <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
                 <p style="font-size: 12px; color: #64748b;">Automated Admin Transmission • SEMI Protocol</p>
             </div>
@@ -1007,164 +1009,129 @@ def dashboard():
                          achievements=user_achievements)
 
 @app.route('/translator')
-@login_required
 def translator():
     return render_template('translator.html')
 
 @app.route('/translate', methods=['POST'])
-@login_required
 def translate():
-    data = request.get_json()
-    text = data.get('text', '').strip()
-    language = data.get('language', 'english').lower()  # 'english' or 'amharic'
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'message': 'Expected a JSON object'}), 400
+    text = data.get('text', '')
+    language = data.get('language', 'english')
+    if not isinstance(text, str) or not isinstance(language, str):
+        return jsonify({'success': False, 'message': 'Text and language must be strings'}), 400
+    language = language.lower()
+    if language not in {'english', 'amharic', 'auto'}:
+        return jsonify({'success': False, 'message': 'Unsupported language'}), 400
+    if len(text) > 1000:
+        return jsonify({'success': False, 'message': 'Text must be 1,000 characters or fewer'}), 400
+    text = text.strip()
     
     if not text:
-        return jsonify({'success': False, 'message': 'Please enter text to translate'})
+        return jsonify({'success': False, 'message': 'Please enter text to translate'}), 400
     
-    # Auto-detect Language if not specified
-    if language == 'auto':
-        # Check if text contains Amharic characters
-        amharic_chars = set('ሀሁሂሃሄህሆለሉሊላሌልሎሐሑሒሓሔሕሖመሙሚማሜምሞሠሡሢሣሤሥሦረሩሪራሬርሮሰሱሲሳሴስሶሸሹሺሻሼሽሾቀቁቂቃቄቅቆበቡቢባቤብቦተቱቲታቴትቶቸቹቺቻቼችቾነኑኒናኔንኖኘኙኚኛኜኝኞአኡኢኣኤእኦከኩኪካኬክኮኸኹኺኻኼኽኾወዉዊዋዌውዎዐዑዒዓዔዕዖዘዙዚዛዜዝዞዠዡዢዣዤዥዦየዩዪያዬይዮደዱዲዳዴድዶጀጁጂጃጄጅጆገጉጊጋጌግጎጠጡጢጣጤጥጦጨጩጪጫጬጭጮጰጱጲጳጴጵጶፀፁፂፃፄፅፆፈፉፊፋፌፍፎፐፑፒፓፔፕፖ')
-        has_amharic = any(char in amharic_chars for char in text)
-        language = 'amharic' if has_amharic else 'english'
-    
-    sign_assets = []
-    
-    if language == 'amharic':
-        # Amharic to Ethiopian Sign Language
-        WORDS_DIR = 'static/sign/Amharic/words'
-        LETTERS_DIR = 'static/sign/Amharic/letters'
-        
-        # Load Amharic sign mappings
-        amharic_data_path = 'data/amharic_signs.json'
-        amharic_words = {}
-        if os.path.exists(amharic_data_path):
-            with open(amharic_data_path, 'r', encoding='utf-8') as f:
-                amharic_data = json.load(f)
-                amharic_words = amharic_data.get('words', {})
-        
-        # Split text into words
-        words = text.split()
-        
-        for word in words:
-            word_found = False
-            
-            # Try to find word sign
-            word_file = f"{word}.gif"
-            word_path = os.path.join(WORDS_DIR, word_file)
-            if os.path.exists(word_path):
-                sign_assets.append({
-                    'type': 'word',
-                    'word': word,
-                    'url': f'/static/sign/Amharic/words/{word_file}'
-                })
-                word_found = True
-            
-            # If word not found, fingerspell each character
-            if not word_found:
-                for char in word:
-                    char_file = f"{char}.jpg"
-                    char_path = os.path.join(LETTERS_DIR, char_file)
-                    if os.path.exists(char_path):
-                        sign_assets.append({
-                            'type': 'letter',
-                            'char': char,
-                            'url': f'/static/sign/Amharic/letters/{char_file}'
-                        })
-                sign_assets.append({'type': 'break'})
-        
-        # Remove trailing break
-        if sign_assets and sign_assets[-1]['type'] == 'break':
-            sign_assets.pop()
-        
-        normalized_text = text  # Keep Amharic as-is
-        
-    else:
-        # English to ASL (existing logic)
-        LOCATION_DATABASE = {
-            'addis', 'ethiopia', 'school', 'church', 'home', 'office', 
-            'hospital', 'park', 'store', 'restaurant', 'city', 'town',
-            'building', 'room', 'class', 'library', 'gym', 'cafe',
-            'street', 'road', 'house', 'apartment', 'hotel', 'airport'
-        }
-        
-        # Semantic Pattern Detection
-        text_lower = text.lower()
-        words_list = text.split()
-        implied_words = []
-        
-        # Pattern: "welcome to [PLACE]"
-        if 'welcome' in text_lower and 'to' in text_lower:
-            try:
-                to_index = [w.lower() for w in words_list].index('to')
-                if to_index + 1 < len(words_list):
-                    next_word = words_list[to_index + 1].lower()
-                    if next_word in LOCATION_DATABASE:
-                        implied_words.append('ARRIVE')
-            except ValueError:
-                pass
-        
-        # ASL Grammar Normalization
-        asl_stop_words = {'is', 'am', 'are', 'the', 'a', 'an', 'was', 'were', 'be', 'been', 'being'}
-        
-        if not implied_words:
-            asl_stop_words.add('to')
-        
-        original_words = text.split()
-        words = [word for word in original_words if word.lower() not in asl_stop_words]
-        
-        # Inject implied words
-        if implied_words:
-            if 'welcome' in text_lower and 'to' in text_lower:
-                try:
-                    welcome_idx = [w.lower() for w in words].index('welcome')
-                    to_idx = [w.lower() for w in words].index('to')
-                    if to_idx + 1 < len(words):
-                        place_word = words[to_idx + 1]
-                        words = [place_word, 'YOU'] + implied_words + ['WELCOME']
-                except (ValueError, IndexError):
-                    pass
-        
-        normalized_text = " ".join(words)
-        
-        # Generate sign assets for English
-        WORDS_DIR = 'static/sign/words'
-        LETTERS_DIR = 'static/sign/letters'
-        
-        for word in words:
-            word_found = False
-            potential_word_files = [f for f in os.listdir(WORDS_DIR) if f.lower() == f"{word.lower()}.gif"]
-            if potential_word_files:
-                sign_assets.append({'type': 'word', 'word': word, 'url': f'/static/sign/words/{potential_word_files[0]}'})
-                word_found = True
-            if not word_found:
-                for char in word.lower():
-                    if char.isalnum():
-                        num_map = {'1':'one','2':'two','3':'three','4':'four','5':'five','6':'six','7':'seven','8':'eight','9':'nine','0':'ten'}
-                        char_filename = num_map.get(char, char) + '.jpg'
-                        if os.path.exists(os.path.join(LETTERS_DIR, char_filename)):
-                            sign_assets.append({'type': 'letter', 'char': char, 'url': f'/static/sign/letters/{char_filename}'})
-                sign_assets.append({'type': 'break'})
-        
-        if sign_assets and sign_assets[-1]['type'] == 'break':
-            sign_assets.pop()
+    import unicodedata
 
-    # Save translation to database
-    new_translation = Translation(
-        user_id=str(current_user.id),
-        original_text=text,
-        translated_text=normalized_text.upper() if language == 'english' else normalized_text,
-        translation_type=f'{language}_text',
-        is_favorite=False
-    )
-    new_translation.save()
+    if language == 'auto':
+        language = 'amharic' if any('\u1200' <= char <= '\u137f' for char in text) else 'english'
+
+    # Resource lookup only: retain input order without grammatical rewriting.
+    words = []
+    for token in text.split():
+        while token and unicodedata.category(token[0]).startswith('P'):
+            token = token[1:]
+        while token and unicodedata.category(token[-1]).startswith('P'):
+            token = token[:-1]
+        if token:
+            words.append(token)
+    normalized_text = ' '.join(words)
+    sign_assets = []
+    unrepresented = []
+    static_root = os.path.realpath(app.static_folder)
+    resource_prefix = 'sign/Amharic' if language == 'amharic' else 'sign'
+
+    def contained_directory(relative_directory):
+        directory = os.path.realpath(os.path.join(static_root, relative_directory))
+        if os.path.commonpath([static_root, directory]) != static_root:
+            return None
+        return directory
+
+    def asset_url(relative_directory, filename):
+        # Reject separators, drive/stream syntax, and symlinks escaping the directory.
+        if not filename or any(char in filename for char in ('/', '\\', ':', '\x00')):
+            return None
+        try:
+            directory = contained_directory(relative_directory)
+            if not directory:
+                return None
+            path = os.path.realpath(os.path.join(directory, filename))
+            if os.path.commonpath([directory, path]) != directory or not os.path.isfile(path):
+                return None
+            return url_for('static', filename=f'{relative_directory}/{filename}')
+        except (OSError, ValueError):
+            return None
+
+    words_relative = f'{resource_prefix}/words'
+    letters_relative = f'{resource_prefix}/letters'
+    try:
+        words_directory = contained_directory(words_relative)
+        filenames = os.listdir(words_directory) if words_directory else []
+    except (OSError, ValueError):
+        filenames = []
+    word_files = {
+        (name.lower() if language == 'english' else name): name
+        for name in filenames if name.lower().endswith('.gif')
+    }
+    digit_names = {'0': 'zero', '1': 'one', '2': 'two', '3': 'three',
+                   '4': 'four', '5': 'five', '6': 'six', '7': 'seven',
+                   '8': 'eight', '9': 'nine'}
+    for word in words:
+        lookup_word = word.lower() if language == 'english' else word
+        filename = word_files.get(f'{lookup_word}.gif')
+        word_url = asset_url(words_relative, filename) if filename else None
+        if word_url:
+            sign_assets.append({'type': 'word', 'word': word, 'url': word_url})
+            continue
+
+        missing = []
+        for char in lookup_word:
+            # Punctuation is ignored, not interpreted as a sign.
+            if unicodedata.category(char).startswith('P'):
+                continue
+            stem = digit_names.get(char, char) if language == 'english' else char
+            letter_url = asset_url(letters_relative, f'{stem}.jpg')
+            if letter_url:
+                sign_assets.append({'type': 'letter', 'char': char, 'word': word, 'url': letter_url})
+            else:
+                missing.append(char)
+        if missing:
+            unrepresented.append({'word': word, 'characters': ''.join(missing)})
+        sign_assets.append({'type': 'break'})
+
+    if sign_assets and sign_assets[-1]['type'] == 'break':
+        sign_assets.pop()
+
+    # Only account holders have persistent translation history.
+    translation_id = None
+    if current_user.is_authenticated:
+        new_translation = Translation(
+            user_id=str(current_user.id),
+            original_text=text,
+            translated_text=normalized_text.upper() if language == 'english' else normalized_text,
+            translation_type=f'{language}_text',
+            is_favorite=False
+        )
+        new_translation.save()
+        translation_id = str(new_translation.id)
     
     return jsonify({
         'success': True,
         'original': text,
         'language': language,
         'sign_assets': sign_assets,
-        'translation_id': str(new_translation.id)
+        'unrepresented': unrepresented,
+        'translation_id': translation_id
     })
 
 @app.route('/favorite/<translation_id>', methods=['POST'])
@@ -2457,14 +2424,23 @@ def delete_quiz_question(qid):
 from openai import OpenAI
 
 # Configure AI (AI/ML API)
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# AIML_API_KEY is preferred; retain the legacy name for existing installations.
+AIML_API_KEY = (os.getenv('AIML_API_KEY') or os.getenv('GEMINI_API_KEY') or '').strip()
+
+@app.context_processor
+def assistant_status_context():
+    # Configuration is not proof of provider availability. No network probe.
+    return {'assistant_configured': bool(AIML_API_KEY)}
+
 
 # --- SEMI AI Assistant API ---
 @app.route('/api/chat', methods=['POST'])
 def chat_api():
     try:
-        data = request.get_json()
-        user_message = data.get('message', '').strip()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get('message'), str):
+            return jsonify({'success': False, 'message': 'Please enter a message.'}), 400
+        user_message = data['message'].strip()
         
         if not user_message:
             return jsonify({'success': False, 'message': 'Empty message'})
@@ -2480,28 +2456,31 @@ def chat_api():
         progress = None
         if current_user.is_authenticated:
             user_context['name'] = getattr(current_user, 'first_name', 'Student') or 'Student'
-            progress = Progress.objects(user_id=current_user.id).first()
+            try:
+                progress = Progress.objects(user_id=current_user.id).first()
+            except Exception:
+                app.logger.warning('Assistant personalization unavailable')
         if progress:
             user_context['streak'] = progress.streak_count
             user_context['level'] = progress.level
             user_context['xp'] = progress.experience_points
 
         # 2. GENERATIVE AI MODE (GPT-4o via AI/ML API)
-        if GEMINI_API_KEY:
+        if AIML_API_KEY:
             try:
                 client = OpenAI(
-                    api_key=GEMINI_API_KEY,
+                    api_key=AIML_API_KEY,
                     base_url="https://api.aimlapi.com/v1"
                 )
 
                 # The STRONG System Prompt
                 system_instruction = f"""
-                You are the "SEMI Assistant", an expert American Sign Language (ASL) tutor and companion for the SEMI platform.
-                Your mission is to bridge the gap between Hearing and Deaf communities by helping students learn ASL effectively.
+                You are the "SEMI Assistant", an expert Sign Language tutor and companion for the SEMI platform.
+                Your mission is to bridge the gap between Hearing and Deaf communities by helping students learn Sign Language (both ASL and Ethiopian Sign Language/EthSL) effectively.
 
                 **Your Persona:**
                 - You are warm, encouraging, and enthusiastic. 🌟
-                - You use emojis (👋, 🤟, ✨) naturally to convey tone, as facial expression is key in ASL.
+                - You use emojis (👋, 🤟, ✨) naturally to convey tone, as facial expression is key in Sign Language.
                 - You are concise. Chat bubbles are small, so keep answers under 3-4 sentences unless explaining a concept.
                 
                 **Your User Context:**
@@ -2510,13 +2489,13 @@ def chat_api():
                 - Skill Level: {user_context['level']} (Adjust your complexity accordingly)
 
                 **Platform Knowledge (Use this to guide users):**
-                - "Translator": Converts English text/audio into 3D sign animations. Great for quick vocab.
+                - "Translator": Converts voice/audio/text into visual sign animations. Great for quick vocab.
                 - "Sign Lab": Uses the webcam and AI to verify the user's hand signs in real-time.
                 - "Courses": Structured Curriculum (Beginner to Advanced). Recommended for serious learning.
                 - "Skill Arena": Quizzes and gamification to test memory.
 
                 **Guidance Rules:**
-                1. **Deaf Culture**: Always emphasize respect. Explain that ASL has its own grammar (Topic-Comment), it is NOT just signed English.
+                1. **Deaf Culture**: Always emphasize respect. Explain that Sign Languages (like ASL and EthSL) have their own grammar, and they are NOT just signed versions of spoken languages.
                 2. **Emotional Support**: If a user mentions a deaf friend/family member, validate their motivation. It's a beautiful reason to learn.
                 3. **Translation**: You cannot show video yourself. If asked to translate "Hello", describe the sign ("Place hand on forehead, move away...") AND tell them to use the **Translator** page for a visual demo.
                 4. **Troubleshooting**: If they report a bug, apologize and direct them to the Feedback form.
@@ -2535,17 +2514,28 @@ def chat_api():
                 )
                 
                 reply = response.choices[0].message.content
+                if not reply or not reply.strip():
+                    raise ValueError('Empty assistant response')
                 reply = reply.replace('**', '') 
                 
-                return jsonify({'success': True, 'reply': reply})
+                return jsonify({'success': True, 'reply': reply, 'mode': 'ai', 'status': 'available'})
 
-            except Exception as ai_error:
-                # Log error to file for debugging
-                with open('chat_errors.log', 'a') as f:
-                    f.write(f"[{datetime.utcnow()}] AI Error: {str(ai_error)}\n")
-                print(f"AI/ML API Error: {ai_error}")
-                # Fallback to rules if AI fails
-                pass
+            except Exception as exc:
+                exception_type = type(exc).__name__
+                status = getattr(exc, 'status_code', None)
+                status = status if isinstance(status, int) else None
+                if status in (401, 403):
+                    category = 'authentication'
+                elif status == 429:
+                    category = 'rate limit/quota'
+                elif status in (408, 504) or exception_type in ('APITimeoutError', 'APIConnectionError', 'TimeoutError', 'ConnectionError'):
+                    category = 'timeout/network'
+                else:
+                    category = 'unknown'
+                app.logger.warning(
+                    'Assistant provider failure: type=%s status=%s category=%s',
+                    exception_type, status, category
+                )
 
         # 3. FALBACK: Rule-Based Logic (If no key or error)
         # Helper for word boundary matching
@@ -2557,19 +2547,22 @@ def chat_api():
 
         # [EXISTING RULE LOGIC HERE]
         if has_word(user_message_lower, ['hi', 'hello', 'hey', 'greetings', 'sup']):
-            response = f"Hello {user_context['name']}! 👋 I'm ready to help you learn ASL. (Add a Gemini API Key to make me smarter!)"
+            response = f"Hello {user_context['name']}! I can help you find sign-language learning tools on SEMI."
         elif has_word(user_message_lower, ['deaf', 'hearing', 'friend', 'family']):
             response = "That's wonderful! SEMI is designed exactly for that. I'd recommend starting with our **Basic ASL** course together."
         else:
-            response = "I see! Since I'm currently in 'Offline Mode' (No API Key), I can only answer basic questions. Please add a Gemini API Key to .env to unlock my full brain! 🧠"
+            response = "Try the Translator for visual signs, or explore the courses to keep learning."
 
-        import time
-        time.sleep(0.5) 
-        return jsonify({'success': True, 'reply': response})
+        status = 'unavailable' if AIML_API_KEY else 'unconfigured'
+        notice = ("AI is temporarily unavailable. This is a limited local response. "
+                  if AIML_API_KEY else
+                  "AI assistance is not enabled. This is a limited local response. ")
+        return jsonify({'success': True, 'reply': notice + response,
+                        'mode': 'local', 'status': status})
 
-    except Exception as e:
-        print(f"Chat Error: {e}")
-        return jsonify({'success': False, 'message': 'AI currently offline'})
+    except Exception:
+        app.logger.warning('Assistant request could not be completed')
+        return jsonify({'success': False, 'message': 'The assistant is temporarily unavailable. Please try again.', 'status': 'unavailable'}), 503
 
 
 # Error handlers
